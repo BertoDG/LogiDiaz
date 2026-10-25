@@ -727,13 +727,16 @@ namespace LogiRaton {
       }
     }
 
+    // Direccion de un movimiento acumulado: "clic" si no llega a la distancia minima; si llega, el eje con mas movimiento
+    public static string DireccionDe(int[] mov) {
+      int gdx = mov[0], gdy = mov[1], umbral = UmbralGesto;
+      if (Math.Abs(gdx) < umbral && Math.Abs(gdy) < umbral) return "clic";
+      if (Math.Abs(gdx) >= Math.Abs(gdy)) return gdx > 0 ? "derecha" : "izquierda";
+      return gdy > 0 ? "abajo" : "arriba";
+    }
+
     void FinishGesture(int cid, Accion a, int[] mov) {
-      int gdx = mov[0], gdy = mov[1];
-      string dir;
-      int umbral = UmbralGesto;
-      if (Math.Abs(gdx) < umbral && Math.Abs(gdy) < umbral) dir = "clic";
-      else if (Math.Abs(gdx) >= Math.Abs(gdy)) dir = gdx > 0 ? "derecha" : "izquierda";
-      else dir = gdy > 0 ? "abajo" : "arriba";
+      string dir = DireccionDe(mov);
       if (OnGesture != null) OnGesture(cid, dir);
       if (a != null && a.Tipo == "gestos") EjecutarGesto(cid, a, dir);
     }
@@ -772,7 +775,11 @@ namespace LogiRaton {
                 Accion a = resolver != null ? resolver(cid) : null;
                 enCurso[cid] = a;
                 if (a != null && a.Variantes != null) { PulsarVariantes(cid, a); continue; }   // doble clic / pulsacion larga
-                if (track.Contains(cid) && (a == null || a.Tipo == "gestos")) { enGesto[cid] = new int[2]; continue; }
+                if (track.Contains(cid) && (a == null || a.Tipo == "gestos")) {
+                  enGesto[cid] = new int[2];
+                  if (a != null && a.MostrarRueda) RuedaGestos.Empezar(cid, a);           // aparece si se mantiene un momento
+                  continue;
+                }
                 if (a == null) continue;
                 if (a.Tipo == "atajo") Keys.SendCombo(a.Teclas);
                 else if (a.Tipo == "gestos") EjecutarGesto(cid, a, "clic");            // boton sin movimiento desviado
@@ -785,7 +792,8 @@ namespace LogiRaton {
                   Recolocar.Pulsado(cid, a);
                 }
                 else if (a.Tipo == "dpi") Dpi.Pulsado(a);                               // precision: mientras se mantiene
-                else if (a.Tipo == "transformar" || a.Tipo == "ocr" || a.Tipo == "captura" || a.Tipo == "paleta" || a.Tipo == "claude" || a.Tipo == "equipo") Ejecutor.Ejecutar(a);
+                else if (a.Tipo == "transformar" || a.Tipo == "ocr" || a.Tipo == "captura" || a.Tipo == "paleta" || a.Tipo == "claude" || a.Tipo == "equipo"
+                         || a.Tipo == "macro" || a.Tipo == "volumenApp" || a.Tipo == "color") Ejecutor.Ejecutar(a);
                 else EmularBoton(a.Tipo == "boton" ? a.Boton : cid, true);
               }
               foreach (int cid in pressed) {
@@ -794,7 +802,7 @@ namespace LogiRaton {
                 enCurso.TryGetValue(cid, out a);
                 enCurso.Remove(cid);
                 if (a != null && a.Variantes != null) SoltarVariantes(cid);
-                else if (enGesto.ContainsKey(cid)) { int[] mov = enGesto[cid]; enGesto.Remove(cid); FinishGesture(cid, a, mov); }
+                else if (enGesto.ContainsKey(cid)) { int[] mov = enGesto[cid]; enGesto.Remove(cid); RuedaGestos.Terminar(cid); FinishGesture(cid, a, mov); }
                 else if (a != null && (a.Tipo == "boton" || a.Tipo == "defecto")) EmularBoton(a.Tipo == "boton" ? a.Boton : cid, false);
                 else if (a != null && (a.Tipo == "menu" || a.Tipo == "ventanas")) MenuFlotante.Soltado(cid);
                 else if (a != null && a.Tipo == "recolocar") { moverCursor.Remove(cid); Recolocar.Soltado(cid); }
@@ -808,7 +816,10 @@ namespace LogiRaton {
               // El aviso no dice de que boton es: cuenta para todos los gestos en curso.
               if (enGesto.Count > 0 && b.Length >= 8) {
                 int dx = (short)((b[4] << 8) | b[5]), dy = (short)((b[6] << 8) | b[7]);
-                foreach (int[] mov in enGesto.Values) { mov[0] += dx; mov[1] += dy; }
+                foreach (KeyValuePair<int, int[]> g in enGesto) {
+                  g.Value[0] += dx; g.Value[1] += dy;
+                  RuedaGestos.Mover(g.Key, DireccionDe(g.Value));                     // solo hace algo si ese boton tiene la rueda
+                }
               }
               // Recolocar con un boton de movimiento desviado (el de gestos): el cursor no se mueve solo, asi que lo
               // mueve el servidor; Recolocar sigue al cursor real (gesto rapido o celda del panel)
@@ -856,6 +867,10 @@ namespace LogiRaton {
     public int[] Valores;       // velocidades del ciclo
     public int Canal;           // cambiar de equipo: canal 1..3 (0 = el siguiente)
     public string Dispositivos; // cambiar de equipo: "ambos", "raton" o "teclado"
+    public List<Accion> Pasos;  // macro: acciones en orden ("pausa" con Valor = ms)
+    public bool MostrarRueda;   // gestos: ver la rueda junto al cursor al mantener el boton
+    public int EsperaRueda = 300;   // gestos: ms que hay que mantener antes de que aparezca la rueda
+    public string Etiqueta;     // texto corto de la accion (en la rueda de gestos)
     public int Boton;
   }
 
@@ -873,6 +888,7 @@ namespace LogiRaton {
     public bool Ocr;            // si es "copiar texto de la pantalla" (formato antiguo)
     public string Captura;      // captura de pantalla: "texto", "imagen" o "pantalla"
     public Action Accion;       // accion propia (listas que construye el servidor)
+    public LogiRaton.Accion Hacer;   // cualquier otra accion de boton (otra lista, paleta, macro, volumen...)
   }
 
   // ---- Ejecutar una accion suelta (direccion de gesto, combinacion de teclas) ----
@@ -897,6 +913,9 @@ namespace LogiRaton {
         case "claude": Chat.Abrir(g.Url, g.Llevar ?? (g.ConSeleccion ? "seleccion" : ""), g.Plantilla, g.Ancho, g.Alto); break;
         case "dpi": Dpi.Ejecutar(g); break;
         case "equipo": Manager.CambiarEquipo(g.Canal, g.Dispositivos); break;
+        case "macro": Macro.Ejecutar(g); break;
+        case "volumenApp": VolumenApp.Cambiar(g.Modo, g.Valor); break;
+        case "color": ColorPantalla.Copiar(g.Modo); break;
       }
     }
 
@@ -910,6 +929,19 @@ namespace LogiRaton {
       else if (op.Transformacion != null) Transformar.Aplicar(op.Transformacion);
       else if (op.Captura != null) Captura.Hacer(op.Captura);
       else if (op.Ocr) OcrPuente.Lanzar();
+      else if (op.Hacer != null) {
+        // Un momento despues, con la lista ya cerrada: asi otra lista, la paleta o recolocar se abren limpias
+        Accion h = op.Hacer;
+        MenuFlotante.EnUI(delegate {
+          System.Windows.Forms.Timer t = new System.Windows.Forms.Timer();
+          t.Interval = 120;
+          t.Tick += delegate {
+            t.Stop(); t.Dispose();
+            try { Ejecutar(h); } catch (Exception e) { Acciones.Avisos.Enqueue("Opcion de lista: " + e.Message); }
+          };
+          t.Start();
+        });
+      }
       else if (op.Accion != null) op.Accion();
     }
   }
@@ -1032,6 +1064,146 @@ namespace LogiRaton {
       th.SetApartmentState(ApartmentState.MTA);
       th.IsBackground = true;
       th.Start();
+    }
+  }
+
+  // ---- Macro: varias acciones seguidas (atajo, texto, ejecutar, clic) con pausas opcionales ----
+  // Va en su propio hilo para no bloquear el raton ni el teclado; solo una a la vez (pulsar de nuevo mientras corre no hace nada).
+  public static class Macro {
+    static int enCurso;
+    public static void Ejecutar(Accion a) {
+      if (a.Pasos == null || a.Pasos.Count == 0) return;
+      if (Interlocked.Exchange(ref enCurso, 1) == 1) return;
+      Thread th = new Thread(delegate () {
+        try {
+          foreach (Accion p in a.Pasos) {
+            if (p.Tipo == "pausa") { Thread.Sleep(Math.Max(0, Math.Min(10000, p.Valor))); continue; }
+            Ejecutor.Ejecutar(p);
+            Thread.Sleep(p.Tipo == "texto" ? 250 : 60);           // margen para que la aplicacion procese el paso
+          }
+        } catch (Exception e) { Acciones.Avisos.Enqueue("Macro: " + e.Message); }
+        finally { Interlocked.Exchange(ref enCurso, 0); }
+      });
+      th.IsBackground = true;
+      th.SetApartmentState(ApartmentState.STA);
+      th.Start();
+    }
+  }
+
+  // ---- Volumen solo de la aplicacion activa (sesiones de audio de Windows, como el mezclador de volumen) ----
+  // modo: "subir", "bajar" (paso en %) o "silenciar" (alterna). Cuenta todas las sesiones del mismo programa (p. ej. Chrome).
+  public static class VolumenApp {
+    [ComImport, Guid("BCDE0395-E52F-467C-8E3D-C4579291692E")] class EnumeradorCom { }
+    [ComImport, Guid("A95664D2-9614-4F35-A746-DE8DB63617E6"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+    interface IMMDeviceEnumerator {
+      [PreserveSig] int EnumAudioEndpoints(int flujo, int estados, out IntPtr lista);
+      [PreserveSig] int GetDefaultAudioEndpoint(int flujo, int rol, out IMMDevice d);
+    }
+    [ComImport, Guid("D666063F-1587-4E43-81F1-B948E807363F"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+    interface IMMDevice {
+      [PreserveSig] int Activate(ref Guid iid, int contexto, IntPtr parametros, [MarshalAs(UnmanagedType.IUnknown)] out object o);
+    }
+    [ComImport, Guid("77AA99A0-1BD6-484F-8BC7-2C654C9A9B6F"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+    interface IAudioSessionManager2 {
+      [PreserveSig] int GetAudioSessionControl(IntPtr grupo, int flags, out IntPtr control);
+      [PreserveSig] int GetSimpleAudioVolume(IntPtr grupo, int flags, out IntPtr volumen);
+      [PreserveSig] int GetSessionEnumerator(out IAudioSessionEnumerator e);
+    }
+    [ComImport, Guid("E2F5BB11-0570-40CA-ACDD-3AA01277DEE8"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+    interface IAudioSessionEnumerator {
+      [PreserveSig] int GetCount(out int n);
+      [PreserveSig] int GetSession(int i, out IntPtr sesion);
+    }
+    // Solo se usa GetProcessId; los metodos anteriores ocupan su sitio en la tabla de la interfaz
+    [ComImport, Guid("bfb7ff88-7239-4fc9-8fa2-07c950be9c6d"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+    interface IAudioSessionControl2 {
+      [PreserveSig] int GetState(out int s);
+      [PreserveSig] int GetDisplayName(out IntPtr n);
+      [PreserveSig] int SetDisplayName(IntPtr n, IntPtr ctx);
+      [PreserveSig] int GetIconPath(out IntPtr p);
+      [PreserveSig] int SetIconPath(IntPtr p, IntPtr ctx);
+      [PreserveSig] int GetGroupingParam(out Guid g);
+      [PreserveSig] int SetGroupingParam(IntPtr g, IntPtr ctx);
+      [PreserveSig] int RegisterAudioSessionNotification(IntPtr n);
+      [PreserveSig] int UnregisterAudioSessionNotification(IntPtr n);
+      [PreserveSig] int GetSessionIdentifier(out IntPtr s);
+      [PreserveSig] int GetSessionInstanceIdentifier(out IntPtr s);
+      [PreserveSig] int GetProcessId(out uint pid);
+    }
+    [ComImport, Guid("87CE5498-68D6-44E5-9215-6DA47EF883D8"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+    interface ISimpleAudioVolume {
+      [PreserveSig] int SetMasterVolume(float v, IntPtr ctx);
+      [PreserveSig] int GetMasterVolume(out float v);
+      [PreserveSig] int SetMute([MarshalAs(UnmanagedType.Bool)] bool silencio, IntPtr ctx);
+      [PreserveSig] int GetMute([MarshalAs(UnmanagedType.Bool)] out bool silencio);
+    }
+
+    public static void Cambiar(string modo, int paso) {
+      string exe = Primerplano.Exe();
+      if (exe == "") return;
+      string nombre = exe.EndsWith(".exe") ? exe.Substring(0, exe.Length - 4) : exe;
+      if (paso <= 0) paso = 10;
+      Thread th = new Thread(delegate () {
+        List<object> rcw = new List<object>();
+        try {
+          IMMDeviceEnumerator en = (IMMDeviceEnumerator)new EnumeradorCom(); rcw.Add(en);
+          IMMDevice dev;
+          if (en.GetDefaultAudioEndpoint(0, 1, out dev) != 0) { Aviso.Mostrar("No hay salida de sonido"); return; }   // eRender, eMultimedia
+          rcw.Add(dev);
+          Guid iid = typeof(IAudioSessionManager2).GUID; object o;
+          if (dev.Activate(ref iid, 23, IntPtr.Zero, out o) != 0) return;                                                // CLSCTX_ALL
+          rcw.Add(o);
+          IAudioSessionEnumerator se;
+          if (((IAudioSessionManager2)o).GetSessionEnumerator(out se) != 0) return;
+          rcw.Add(se);
+          int n; se.GetCount(out n);
+          List<ISimpleAudioVolume> vols = new List<ISimpleAudioVolume>();
+          for (int i = 0; i < n; i++) {
+            IntPtr p;
+            if (se.GetSession(i, out p) != 0 || p == IntPtr.Zero) continue;
+            object s = Marshal.GetObjectForIUnknown(p); Marshal.Release(p); rcw.Add(s);
+            uint pid;
+            if (((IAudioSessionControl2)s).GetProcessId(out pid) != 0 || pid == 0) continue;
+            string pn;
+            try { using (Process pr = Process.GetProcessById((int)pid)) pn = pr.ProcessName; } catch { continue; }
+            if (string.Equals(pn, nombre, StringComparison.OrdinalIgnoreCase)) vols.Add((ISimpleAudioVolume)s);
+          }
+          if (vols.Count == 0) { Aviso.Mostrar(nombre + " no tiene sonido abierto"); return; }
+          float actual; bool mudo;
+          vols[0].GetMasterVolume(out actual); vols[0].GetMute(out mudo);
+          if (modo == "silenciar") {
+            foreach (ISimpleAudioVolume v in vols) v.SetMute(!mudo, IntPtr.Zero);
+            Aviso.Mostrar(nombre + (mudo ? ": con sonido" : ": silenciado"));
+          } else {
+            float nuevo = Math.Max(0f, Math.Min(1f, actual + (modo == "bajar" ? -paso : paso) / 100f));
+            foreach (ISimpleAudioVolume v in vols) { v.SetMasterVolume(nuevo, IntPtr.Zero); if (mudo && modo == "subir") v.SetMute(false, IntPtr.Zero); }
+            Aviso.Mostrar(nombre + ": " + (int)Math.Round(nuevo * 100) + " %");
+          }
+        } catch (Exception e) { Acciones.Avisos.Enqueue("Volumen de la aplicacion: " + e.Message); }
+        finally { foreach (object r in rcw) try { if (r != null && Marshal.IsComObject(r)) Marshal.ReleaseComObject(r); } catch { } }
+      });
+      th.SetApartmentState(ApartmentState.MTA);
+      th.IsBackground = true;
+      th.Start();
+    }
+  }
+
+  // ---- Color de la pantalla: copia el color del pixel bajo el cursor ("hex": #1E90FF; "rgb": rgb(30, 144, 255)) ----
+  public static class ColorPantalla {
+    public static void Copiar(string formato) {
+      MenuFlotante.EnUI(delegate {
+        try {
+          Point p = Cursor.Position;
+          Color c;
+          using (Bitmap b = new Bitmap(1, 1)) {
+            using (Graphics g = Graphics.FromImage(b)) g.CopyFromScreen(p.X, p.Y, 0, 0, new Size(1, 1));
+            c = b.GetPixel(0, 0);
+          }
+          string t = formato == "rgb" ? "rgb(" + c.R + ", " + c.G + ", " + c.B + ")" : "#" + c.R.ToString("X2") + c.G.ToString("X2") + c.B.ToString("X2");
+          Clipboard.SetDataObject(t, true, 10, 50);
+          Aviso.Mostrar("Color " + t + " copiado");
+        } catch (Exception e) { Acciones.Avisos.Enqueue("Color de la pantalla: " + e.Message); }
+      });
     }
   }
 
@@ -1882,6 +2054,191 @@ namespace LogiRaton {
     }
   }
 
+  // ---- Rueda de gestos: al mantener un boton de gestos (si lo tiene activado), una tarta junto al cursor con la accion
+  // de cada direccion; se ilumina la que se ejecutaria al soltar. Aparece tras la espera para no estorbar en los gestos
+  // rapidos. Solo se repinta cuando cambia la direccion. Las llamadas llegan del hilo del raton; la ventana va en el de la UI.
+  public static class RuedaGestos {
+    static readonly object bloqueo = new object();
+    static volatile int cidActual = -1;
+    static int turno;                                   // cada gesto tiene el suyo: lo que llegue tarde de otro se ignora
+    static Accion accion;
+    static volatile string dir = "clic";
+    static volatile bool visible;
+    static System.Threading.Timer espera;
+    static FormRueda form;
+
+    public static void Empezar(int cid, Accion a) {
+      int t;
+      lock (bloqueo) {
+        if (espera != null) espera.Dispose();
+        t = ++turno; cidActual = cid; accion = a; dir = "clic"; visible = false;
+        espera = new System.Threading.Timer(delegate { Mostrar(t); }, null, Math.Max(0, a.EsperaRueda), System.Threading.Timeout.Infinite);
+      }
+    }
+
+    static void Mostrar(int t) {
+      Accion a; string d;
+      lock (bloqueo) { if (t != turno || cidActual < 0) return; visible = true; a = accion; d = dir; }
+      MenuFlotante.EnUI(delegate {
+        if (t != turno || cidActual < 0) return;              // ya se ha soltado
+        if (form == null) form = new FormRueda();
+        form.Mostrar(a, d);
+      });
+    }
+
+    public static void Mover(int cid, string d) {
+      if (cid != cidActual || d == dir) return;
+      dir = d;
+      if (visible) MenuFlotante.EnUI(delegate { if (form != null && visible) form.Marcar(d); });
+    }
+
+    public static void Terminar(int cid) {
+      bool estaba;
+      lock (bloqueo) {
+        if (cid != cidActual) return;
+        cidActual = -1; turno++; estaba = visible; visible = false;
+        if (espera != null) { espera.Dispose(); espera = null; }
+      }
+      if (estaba) MenuFlotante.EnUI(delegate { if (form != null) form.Ocultar(); });
+    }
+  }
+
+  // Ventana de la rueda: solo el circulo (ventana con transparencia por pixel, sin marco ni fondo cuadrado), con el
+  // naranja de los botones del raton en la pagina y los neutros del tema de las listas. Los huecos entre gajos son
+  // transparentes. Se dibuja en un mapa de bits y se entrega a Windows con UpdateLayeredWindow (no usa OnPaint).
+  public class FormRueda : Form {
+    [StructLayout(LayoutKind.Sequential)] struct PUNTO { public int X, Y; }
+    [StructLayout(LayoutKind.Sequential)] struct TAMANO { public int W, H; }
+    [StructLayout(LayoutKind.Sequential, Pack = 1)] struct MEZCLA { public byte Op, Flags, Alfa, Formato; }
+    [DllImport("user32.dll")] static extern bool UpdateLayeredWindow(IntPtr h, IntPtr dcDestino, ref PUNTO pos, ref TAMANO tam, IntPtr dcOrigen,
+                                                                     ref PUNTO origen, int clave, ref MEZCLA mezcla, int flags);
+    [DllImport("user32.dll")] static extern IntPtr GetDC(IntPtr h);
+    [DllImport("user32.dll")] static extern int ReleaseDC(IntPtr h, IntPtr dc);
+    [DllImport("gdi32.dll")] static extern IntPtr CreateCompatibleDC(IntPtr dc);
+    [DllImport("gdi32.dll")] static extern bool DeleteDC(IntPtr dc);
+    [DllImport("gdi32.dll")] static extern IntPtr SelectObject(IntPtr dc, IntPtr obj);
+    [DllImport("gdi32.dll")] static extern bool DeleteObject(IntPtr obj);
+
+    static readonly string[] ORDEN = { "arriba", "derecha", "abajo", "izquierda" };
+    // Angulos de GDI+ (grados desde la derecha, en el sentido de las agujas del reloj) de cada gajo
+    static readonly Dictionary<string, int> INICIO = new Dictionary<string, int> { { "derecha", -45 }, { "abajo", 45 }, { "izquierda", 135 }, { "arriba", 225 } };
+    // Iconos de la fuente de Windows (Segoe MDL2 Assets, tambien en Windows 10): flechas y una mano para pulsar
+    static readonly Dictionary<string, string> FLECHA = new Dictionary<string, string> {
+      { "arriba", "\ue74a" }, { "abajo", "\ue74b" }, { "izquierda", "\ue72b" }, { "derecha", "\ue72a" }, { "clic", "\ue7c9" } };
+    static readonly Color NARANJA = Color.FromArgb(246, 122, 40);   // el de los botones del raton en la pagina (hsl 24 92% 56%)
+    Accion acc;
+    string sel = "clic";
+    float esc = 1f;
+    int lado, px, py;
+    Font fuente, fuenteDir;
+
+    public FormRueda() {
+      FormBorderStyle = FormBorderStyle.None; ShowInTaskbar = false; TopMost = true; StartPosition = FormStartPosition.Manual;
+      using (Graphics g = CreateGraphics()) esc = g.DpiX / 96f;
+      fuente = new Font("Segoe UI Semibold", 8.5f); fuenteDir = new Font("Segoe MDL2 Assets", 10f);
+    }
+    protected override bool ShowWithoutActivation { get { return true; } }
+    protected override CreateParams CreateParams {
+      // Con transparencia por pixel (LAYERED), sin foco, fuera de la barra de tareas, siempre encima y sin capturar el raton
+      get { CreateParams cp = base.CreateParams; cp.ExStyle |= 0x00080000 | 0x08000000 | 0x00000080 | 0x00000008 | 0x00000020; return cp; }
+    }
+
+    public void Mostrar(Accion a, string d) {
+      acc = a; sel = d;
+      lado = (int)(230 * esc);
+      Point c = Cursor.Position;
+      Rectangle area = Screen.FromPoint(c).WorkingArea;
+      px = Math.Max(area.Left, Math.Min(c.X - lado / 2, area.Right - lado));
+      py = Math.Max(area.Top, Math.Min(c.Y - lado / 2, area.Bottom - lado));
+      Bounds = new Rectangle(px, py, lado, lado);
+      Pintar();
+      if (!Visible) Show();
+    }
+    public void Marcar(string d) { if (d == sel) return; sel = d; if (Visible) Pintar(); }
+    public void Ocultar() { if (Visible) Hide(); }
+
+    string Texto(string d) {
+      Accion g;
+      if (acc == null || acc.Gestos == null || !acc.Gestos.TryGetValue(d, out g) || g == null) return "Nada";
+      return string.IsNullOrEmpty(g.Etiqueta) ? g.Tipo : g.Etiqueta;
+    }
+    bool Tiene(string d) { Accion g; return acc != null && acc.Gestos != null && acc.Gestos.TryGetValue(d, out g) && g != null; }
+
+    void Pintar() {
+      using (Bitmap bmp = new Bitmap(lado, lado, System.Drawing.Imaging.PixelFormat.Format32bppArgb)) {
+        using (Graphics g = Graphics.FromImage(bmp)) Dibujar(g);
+        Entregar(bmp);
+      }
+    }
+
+    void Dibujar(Graphics g) {
+      g.Clear(Color.Transparent);
+      g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
+      g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.AntiAliasGridFit;
+      Estilo es = EstiloListas.Actual;
+      bool claro = EstiloListas.EsClaro(es);
+      Color caja = claro ? Color.FromArgb(250, 251, 252) : Color.FromArgb(31, 35, 41);
+      Color texto = EstiloListas.Texto(es), suave = EstiloListas.TextoSuave(es);
+      Color conAccion = Color.FromArgb(claro ? 60 : 80, NARANJA);
+      float m = 4 * esc, d = lado - 2 * m, cx = lado / 2f, cy = lado / 2f, r = d / 2f, rCentro = d * 0.19f;
+      // Sombra suave alrededor del circulo (para que se distinga sobre cualquier fondo)
+      for (int i = 3; i >= 1; i--)
+        using (SolidBrush b = new SolidBrush(Color.FromArgb(18, 0, 0, 0))) g.FillEllipse(b, m - i * esc, m - i * esc + esc, d + 2 * i * esc, d + 2 * i * esc);
+      // Gajos: base del tema, tinte naranja si tiene accion y naranja lleno el elegido
+      foreach (string k in ORDEN) {
+        using (SolidBrush b = new SolidBrush(caja)) g.FillPie(b, m, m, d, d, INICIO[k], 90);
+        if (k == sel || Tiene(k)) using (SolidBrush b = new SolidBrush(k == sel ? NARANJA : conAccion)) g.FillPie(b, m, m, d, d, INICIO[k], 90);
+      }
+      // Centro (\u00abPulsar\u00bb)
+      using (SolidBrush b = new SolidBrush(caja)) g.FillEllipse(b, cx - rCentro, cy - rCentro, 2 * rCentro, 2 * rCentro);
+      if (sel == "clic" || Tiene("clic"))
+        using (SolidBrush b = new SolidBrush(sel == "clic" ? NARANJA : conAccion)) g.FillEllipse(b, cx - rCentro, cy - rCentro, 2 * rCentro, 2 * rCentro);
+      // Huecos transparentes: las dos diagonales y el anillo alrededor del centro
+      g.CompositingMode = System.Drawing.Drawing2D.CompositingMode.SourceCopy;
+      using (Pen p = new Pen(Color.Transparent, 3 * esc)) {
+        g.DrawLine(p, cx - r, cy - r, cx - rCentro * 0.72f, cy - rCentro * 0.72f); g.DrawLine(p, cx + rCentro * 0.72f, cy + rCentro * 0.72f, cx + r, cy + r);
+        g.DrawLine(p, cx - r, cy + r, cx - rCentro * 0.72f, cy + rCentro * 0.72f); g.DrawLine(p, cx + rCentro * 0.72f, cy - rCentro * 0.72f, cx + r, cy - r);
+        g.DrawEllipse(p, cx - rCentro - 1.5f * esc, cy - rCentro - 1.5f * esc, 2 * rCentro + 3 * esc, 2 * rCentro + 3 * esc);
+      }
+      g.CompositingMode = System.Drawing.Drawing2D.CompositingMode.SourceOver;
+      // Textos: icono de la direccion y la accion en el centro de cada gajo
+      float rTexto = d * 0.34f, ancho = d * 0.34f;
+      foreach (string k in ORDEN) {
+        double ang = (INICIO[k] + 45) * Math.PI / 180;
+        float tx = cx + (float)Math.Cos(ang) * rTexto, ty = cy + (float)Math.Sin(ang) * rTexto;
+        Escribir(g, k, Texto(k), tx, ty, ancho, k == sel ? Color.White : (Tiene(k) ? NARANJA : suave), k == sel ? Color.White : (Tiene(k) ? texto : suave));
+      }
+      Escribir(g, "clic", Tiene("clic") ? Texto("clic") : "Pulsar", cx, cy, rCentro * 1.9f,
+               sel == "clic" ? Color.White : (Tiene("clic") ? NARANJA : suave), sel == "clic" ? Color.White : (Tiene("clic") ? texto : suave));
+    }
+
+    void Escribir(Graphics g, string dir, string accion, float x, float y, float ancho, Color cDir, Color cTexto) {
+      using (StringFormat sf = new StringFormat()) {
+        sf.Alignment = StringAlignment.Center; sf.LineAlignment = StringAlignment.Far; sf.Trimming = StringTrimming.EllipsisWord;
+        using (SolidBrush b = new SolidBrush(cDir)) g.DrawString(FLECHA[dir], fuenteDir, b, new RectangleF(x - ancho / 2, y - 20 * esc, ancho, 18 * esc), sf);
+        sf.LineAlignment = StringAlignment.Near;
+        using (SolidBrush b = new SolidBrush(cTexto)) g.DrawString(accion, fuente, b, new RectangleF(x - ancho / 2, y - 1 * esc, ancho, 30 * esc), sf);
+      }
+    }
+
+    // Entrega el dibujo (con su transparencia) a la ventana
+    void Entregar(Bitmap bmp) {
+      IntPtr pantalla = GetDC(IntPtr.Zero), dc = CreateCompatibleDC(pantalla), hb = IntPtr.Zero, viejo = IntPtr.Zero;
+      try {
+        hb = bmp.GetHbitmap(Color.FromArgb(0));
+        viejo = SelectObject(dc, hb);
+        PUNTO pos = new PUNTO { X = px, Y = py }, origen = new PUNTO();
+        TAMANO tam = new TAMANO { W = lado, H = lado };
+        MEZCLA mz = new MEZCLA { Op = 0, Flags = 0, Alfa = 255, Formato = 1 };          // AC_SRC_OVER, AC_SRC_ALPHA
+        UpdateLayeredWindow(Handle, pantalla, ref pos, ref tam, dc, ref origen, 0, ref mz, 2);   // ULW_ALPHA
+      } finally {
+        if (viejo != IntPtr.Zero) SelectObject(dc, viejo);
+        if (hb != IntPtr.Zero) DeleteObject(hb);
+        DeleteDC(dc); ReleaseDC(IntPtr.Zero, pantalla);
+      }
+    }
+  }
+
   // ---- Chat con Claude en una ventana pequena del navegador por defecto ----
   // Chrome, Edge, Brave o Vivaldi: modo aplicacion (sin pestanas ni barra de direcciones) junto al cursor.
   // Otros navegadores: se abre la direccion normalmente. Opcionalmente prepara en el portapapeles una
@@ -2063,6 +2420,11 @@ namespace LogiRaton {
   public static class Captura {
     public static void Hacer(string modo) {
       if (modo == "pantalla") { Keys.SendCombo(new int[] { 0x2C }); return; }   // Imprimir pantalla (VK 0x2C)
+      // Color bajo el cursor ("color" = HEX, "colorRgb" = RGB; la configuracion puede llegar en minusculas)
+      if (string.Equals(modo, "color", StringComparison.OrdinalIgnoreCase) || string.Equals(modo, "colorRgb", StringComparison.OrdinalIgnoreCase)) {
+        ColorPantalla.Copiar(string.Equals(modo, "colorRgb", StringComparison.OrdinalIgnoreCase) ? "rgb" : "hex");
+        return;
+      }
       if (modo == "imagen") {
         if (OcrPuente.Recortar == null) { Aviso.Mostrar("Recorte no disponible: guarda la configuracion para cargar el modulo de captura"); return; }
         OcrPuente.Recortar(delegate (Bitmap b) {
@@ -3518,6 +3880,7 @@ namespace LogiRaton {
     public Dictionary<int, Dictionary<string, Accion>> Pulsaciones = new Dictionary<int, Dictionary<string, Accion>>();   // doble / larga
     public Dictionary<int, Accion> Otras = new Dictionary<int, Accion>();   // transformar, ocr, paleta
     public HashSet<int> Defecto = new HashSet<int>();
+    public Dictionary<int, int> RuedaGestos = new Dictionary<int, int>();   // botones de gestos que muestran la rueda (cid -> espera en ms)
 
     public Perfil Copia() {
       Perfil r = new Perfil();
@@ -3535,6 +3898,7 @@ namespace LogiRaton {
       r.Pulsaciones = new Dictionary<int, Dictionary<string, Accion>>(Pulsaciones);
       r.Otras = new Dictionary<int, Accion>(Otras);
       r.Defecto = new HashSet<int>(Defecto);
+      r.RuedaGestos = new Dictionary<int, int>(RuedaGestos);
       return r;
     }
 
@@ -3848,7 +4212,12 @@ namespace LogiRaton {
     static Accion Principal(Perfil p, int cid) {
       int[] k; Dictionary<string, Accion> gg; int b;
       if (p.Atajos.TryGetValue(cid, out k)) return new Accion { Tipo = "atajo", Teclas = k };
-      if (p.Gestos.TryGetValue(cid, out gg)) return new Accion { Tipo = "gestos", Gestos = gg };
+      if (p.Gestos.TryGetValue(cid, out gg)) {
+        Accion g = new Accion { Tipo = "gestos", Gestos = gg };
+        int espera;
+        if (p.RuedaGestos.TryGetValue(cid, out espera)) { g.MostrarRueda = true; g.EsperaRueda = espera; }
+        return g;
+      }
       if (p.Botones.TryGetValue(cid, out b)) return new Accion { Tipo = "boton", Boton = b };
       List<Opcion> ops;
       if (p.Menus.TryGetValue(cid, out ops)) return ConFormato(p, cid, new Accion { Tipo = "menu", Opciones = ops });

@@ -21,8 +21,15 @@ No necesita instalación ni permisos de administrador, y no envía nada a intern
 - **Batería**: icono en la bandeja del sistema y aviso de batería baja.
 - **Easy-Switch**: cambiar teclado y ratón de equipo a la vez con una acción, o que uno siga al otro al cambiarlo con su botón.
 - **Silenciar el micrófono** de Windows desde cualquier botón, tecla o gesto.
+- **Macros** (varias acciones seguidas con pausas), **volumen solo de la aplicación activa** y **color de la pantalla**
+  (dentro de la captura: el color bajo el cursor en HEX o RGB).
+- **Listas de opciones** en las que cada opción puede ser cualquier acción (otra lista, una macro, la paleta…).
+- **Rueda de gestos**: al mantener un botón con gestos, una rueda junto al cursor muestra qué hace cada dirección
+  (se activa en cada botón).
+- **Copias de la configuración**: al guardar se conservan las 10 últimas versiones y se puede volver a cualquiera.
 - Aspecto configurable de las listas (tema, color, transparencia, difuminado, esquinas, iconos…), tema claro/oscuro
-  de la página y buscador de botones, teclas y acciones (Ctrl+F).
+  de la página, vistas de botones en lista, fichas o acordeón, buscador de botones, teclas y acciones (Ctrl+F) y
+  guardar con Ctrl+S.
 
 ## Requisitos
 
@@ -74,7 +81,8 @@ La app busca los dispositivos por nombre (por defecto `MX Master` y `MX Keys`). 
 | `icono.ico` | Icono de la app |
 | `img/` | Fotos del teclado y del ratón que muestra la página |
 
-`configuracion.json`, el registro (`raton.log`) y los ficheros `*.flag` son de cada equipo y no se suben al repositorio.
+`configuracion.json`, sus copias (`copias/`), el registro (`raton.log`) y los ficheros `*.flag` son de cada equipo y no
+se suben al repositorio.
 
 ## Seguridad
 

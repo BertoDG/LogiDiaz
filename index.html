@@ -171,7 +171,7 @@
   /* Fichas: rejilla de tarjetas con icono; el editor de la elegida va debajo, en un panel aparte.
      Cada ficha tiene su color (--tono, en HSL) según su familia; en la vista de un color (.vista-mono) todas usan el mismo. */
   .t-luz { --tono: 38 92% 52%; } .t-voz { --tono: 4 80% 60%; } .t-media { --tono: 330 80% 60%; }
-  .t-sonido { --tono: 172 70% 42%; } .t-sistema { --tono: 217 90% 60%; } .t-raton { --tono: 262 75% 64%; }
+  .t-sonido { --tono: 172 70% 42%; } .t-sistema { --tono: 217 90% 60%; } .t-raton { --tono: 24 92% 56%; }
   .vista-mono .itemBoton, .vista-mono .panelBoton { --tono: 219 80% 60%; }
   .icoFicha { display: none; }
   .vista-fichas .listaBotones { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 10px; }
@@ -272,34 +272,55 @@
   .tabsPanel > button { border: 0; border-bottom: 2px solid transparent; border-radius: 0; background: none; padding: 6px 12px;
                         color: var(--muted); font-weight: 600; }
   .tabsPanel > button.sel { border-bottom-color: var(--accent); color: var(--text); }
-  /* Gestos: fichas en cruz (como el movimiento) y, debajo, el editor de la elegida */
-  .gestosCruz { display: grid; grid-template-columns: repeat(3, minmax(100px, 165px)); gap: 4px;
-                grid-template-areas: ". arriba ." "izquierda clic derecha" ". abajo ."; }
-  /* En pantallas anchas la cruz va a la derecha, junto al título y la acción del botón (no añade alto propio);
-     el editor del gesto elegido sigue debajo, a todo el ancho */
+  /* Gestos: un círculo en cuatro gajos (como un gráfico de tarta) con «Pulsar» en el centro, la leyenda al lado y,
+     debajo, el editor de la dirección elegida. El color (--tono) es el del botón que se edita; sin él, el de acento */
+  .gestosCompacto { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; }
+  /* En pantallas anchas va a la derecha, junto al título y la acción del botón (no añade alto propio) */
   @media (min-width: 901px) {
     .editorBoton:not([hidden]):has(> * > .gestos) { display: grid; grid-template-columns: max-content minmax(0, 1fr); grid-template-rows: auto 1fr;
                                       column-gap: 18px; row-gap: 8px; align-items: start; }
     .editorBoton > :has(> .gestos), .editorBoton .gestos { display: contents; }
-    .editorBoton .gestosCruz { grid-column: 2; grid-row: 1 / span 2; justify-self: center; }
+    .editorBoton .gestosCompacto { grid-column: 2; grid-row: 1 / span 2; justify-self: end; }
     .editorBoton .gestoPanel { grid-column: 1 / -1; margin-top: 2px; }
   }
-  .gestoFicha[data-dir="arriba"] { grid-area: arriba; } .gestoFicha[data-dir="abajo"] { grid-area: abajo; }
-  .gestoFicha[data-dir="izquierda"] { grid-area: izquierda; } .gestoFicha[data-dir="derecha"] { grid-area: derecha; }
-  .gestoFicha[data-dir="clic"] { grid-area: clic; border-radius: 18px; }
-  .gestoFicha { display: flex; flex-direction: column; align-items: center; gap: 0; min-width: 0; padding: 4px 8px; font: inherit; line-height: 1.3;
-                color: var(--text); background: var(--bg); border: 1px solid var(--line); border-radius: 10px; cursor: pointer; }
-  .vista-fichas .gestoFicha { background: var(--card); }
-  .gestoFicha:hover { background: var(--code); }
-  .gestoFicha .gDir { font-weight: 600; font-size: 12.5px; }
-  .gestoFicha .gRes { font-size: 11.5px; color: var(--muted); max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .gestoFicha.conAccion .gRes { color: var(--accent); }
-  .gestoFicha.abierto { border-color: var(--accent); background: var(--accent-soft); }
-  .gestoPanel { margin-top: 10px; padding: 12px 14px; border: 1px solid var(--line); border-radius: 10px; }
+  .gestosCruz { --sepG: var(--card); --fondoG: var(--code); position: relative; flex: none; width: 164px; height: 164px;
+                border-radius: 50%; overflow: hidden; }
+  .vista-fichas .gestosCruz { --sepG: var(--code); --fondoG: var(--card); }
+  /* Separaciones en diagonal entre los gajos y anillo alrededor del centro */
+  .gestosCruz::before, .gestosCruz::after { content: ""; position: absolute; left: -21%; top: calc(50% - 1.5px); width: 142%; height: 3px;
+                                            background: var(--sepG); z-index: 1; pointer-events: none; transform: rotate(45deg); }
+  .gestosCruz::after { transform: rotate(-45deg); }
+  .gestoFicha { --tonoG: var(--tono, 219 80% 60%); position: absolute; inset: 0; display: flex; border: 0; padding: 18px; margin: 0;
+                background: var(--fondoG); color: var(--muted); cursor: pointer; transition: background .12s, filter .12s; }
+  .gestoFicha:hover { filter: brightness(1.12); }
+  .gestoFicha[data-dir="arriba"] { clip-path: polygon(50% 50%, 0 0, 100% 0); justify-content: center; align-items: flex-start; }
+  .gestoFicha[data-dir="derecha"] { clip-path: polygon(50% 50%, 100% 0, 100% 100%); justify-content: flex-end; align-items: center; }
+  .gestoFicha[data-dir="abajo"] { clip-path: polygon(50% 50%, 100% 100%, 0 100%); justify-content: center; align-items: flex-end; }
+  .gestoFicha[data-dir="izquierda"] { clip-path: polygon(50% 50%, 0 100%, 0 0); justify-content: flex-start; align-items: center; }
+  .gestoFicha[data-dir="clic"] { inset: 33%; z-index: 2; padding: 0; border-radius: 50%; justify-content: center; align-items: center;
+                                 box-shadow: 0 0 0 3px var(--sepG); }
+  .gestoFicha .gIco { font: 16px "Segoe Fluent Icons", "Segoe MDL2 Assets"; line-height: 1; }
+  .gestoFicha.conAccion { background: linear-gradient(hsl(var(--tonoG) / .26), hsl(var(--tonoG) / .26)), var(--fondoG); color: hsl(var(--tonoG)); }
+  .gestoFicha.abierto { background: hsl(var(--tonoG)); color: #fff; }
+  /* Leyenda: cada dirección con lo que hace; también elige la dirección */
+  .leyendaGestos { display: grid; gap: 2px; min-width: 220px; }
+  .leyendaGestos button { display: grid; grid-template-columns: 20px auto minmax(0, 1fr); gap: 8px; align-items: center; text-align: left;
+                          border: 0; background: transparent; padding: 4px 9px; border-radius: 7px; font-size: 12.5px; color: var(--text); }
+  .leyendaGestos button:hover { background: var(--code); }
+  .leyendaGestos .lIco { font: 12px "Segoe Fluent Icons", "Segoe MDL2 Assets"; color: var(--muted); text-align: center; }
+  .leyendaGestos .lDir { font-weight: 600; }
+  .leyendaGestos .lRes { color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 240px; }
+  .leyendaGestos .con .lIco, .leyendaGestos .con .lRes { color: hsl(var(--tono, 219 80% 60%)); }
+  .leyendaGestos .con .lRes { font-weight: 600; }
+  .leyendaGestos .sel { background: hsl(var(--tono, 219 80% 60%) / .16); }
+  .opcRueda { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; margin-top: 6px; padding: 6px 9px 0;
+              border-top: 1px solid var(--line); font-size: 12.5px; }
+  .gestoPanel { margin-top: 10px; padding: 12px 14px; border: 0; border-radius: 12px; background: var(--code);
+                box-shadow: inset 3px 0 0 hsl(var(--tono, 219 80% 60%)); }
+  .vista-fichas .gestoPanel { background: var(--card); }
   .gestoEditor { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
   .gestoEditor[hidden] { display: none; }
   .tituloGesto { font-weight: 600; }
-  @media (max-width: 760px) { .gestosCruz { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
   .opcionLista .detalle input { width: 130px; }
 
   /* ---- Fotos de los periféricos con los resaltes encima, como Logi Options+ ----
@@ -374,6 +395,11 @@
   #btnGuardar, #btnDeshacer { display: inline-flex; align-items: center; gap: 6px; padding: 6px 13px; font-weight: 600; }
   #btnGuardar { box-shadow: 0 1px 3px rgba(0,0,0,.18); }
   #btnGuardar:hover { filter: brightness(1.08); }
+  /* Guardando: rueda girando en lugar del tick; el botón no se puede pulsar hasta que termine */
+  #btnGuardar.ocupado { cursor: progress; opacity: .85; filter: none; }
+  .girando { width: 15px; height: 15px; border-radius: 50%; border: 2.2px solid currentColor; border-right-color: transparent;
+             display: inline-block; animation: girar .7s linear infinite; }
+  @keyframes girar { to { transform: rotate(360deg); } }
   #btnDeshacer { color: var(--muted); }
   #btnDeshacer:hover { color: var(--text); }
   #sinGuardar:not(:empty) { padding: 3px 10px; border-radius: 999px; border: 1px solid currentColor; font-size: 12px; }
@@ -498,6 +524,23 @@
   .vacio .glifoVacio { font: 20px "Segoe Fluent Icons", "Segoe MDL2 Assets"; color: var(--accent); }
   #eventos:empty::before { content: "Pulsa un botón del ratón o una tecla del teclado y aparecerá aquí."; color: var(--muted);
                            font-family: "Segoe UI", system-ui, sans-serif; font-size: 13px; }
+  /* Opción de lista con una acción completa (otra lista, macro, paleta…): su editor ocupa todo el ancho, debajo */
+  .opcionLista .opcionExtra { flex: 1 1 100%; order: 10; display: flex; flex-direction: column; align-items: flex-start; gap: 6px;
+                              padding: 8px 10px; border-radius: 8px; background: var(--code); }
+  .vista-fichas .opcionLista .opcionExtra { background: var(--card); }
+  .opcionLista .opcionExtra > div { width: 100%; }
+  /* Macro: un paso por fila (número, tipo, lo que hace y botones para moverlo o quitarlo) */
+  .macro { display: flex; flex-direction: column; gap: 6px; }
+  .pasoMacro { display: grid; grid-template-columns: 24px minmax(150px, 180px) minmax(0, 1fr) auto; gap: 8px; align-items: start;
+               padding: 6px 8px; border-radius: 10px; background: var(--code); }
+  .vista-fichas .pasoMacro { background: var(--card); }
+  .numPaso { width: 22px; height: 22px; margin-top: 4px; border-radius: 50%; display: grid; place-items: center; font-size: 11.5px; font-weight: 700;
+             color: var(--accent-text); background: var(--accent); }
+  .campoPaso { min-width: 0; }
+  .accionesPaso { display: inline-flex; gap: 2px; }
+  .accionesPaso button { padding: 3px 8px; font-size: 13px; }
+  .accionesPaso button:disabled { opacity: .3; cursor: default; }
+  @media (max-width: 900px) { .pasoMacro { grid-template-columns: 24px minmax(0, 1fr) auto; } .pasoMacro .campoPaso { grid-column: 2 / -1; } }
   /* El código interno (0x00C3) no se muestra: está en el texto que sale al pasar el ratón */
   .tituloEditor .hex, .vista-acordeon .cabBoton .hex { display: none; }
 </style>
@@ -512,7 +555,7 @@
     <span class="grow"></span>
     <span id="sinGuardar"></span>
     <button id="btnDeshacer" class="fantasma" title="Descartar los cambios sin guardar"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 14 4 9l5-5"/><path d="M4 9h11a5 5 0 0 1 0 10h-3"/></svg>Deshacer</button>
-    <button id="btnGuardar" class="primary" title="Guardar y aplicar la configuración"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>Guardar</button>
+    <button id="btnGuardar" class="primary" title="Guardar y aplicar la configuración (Ctrl+S)"><svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>Guardar</button>
     <span class="sepBarra"></span>
     <button id="btnExportar" class="iconBtn fantasma" title="Exportar la configuración a un fichero"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12M7 10l5 5 5-5M5 21h14"/></svg></button>
     <button id="btnImportar" class="iconBtn fantasma" title="Importar una configuración desde un fichero"><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21V9M7 14l5-5 5 5M5 3h14"/></svg></button>
@@ -824,6 +867,14 @@
       <p class="note ayuda">Al pegar texto o transformar la selección se usa el portapapeles y después se devuelve lo que había
         (texto, imagen, ficheros…). Si una aplicación lenta (p. ej. Oracle Forms) pega lo anterior en vez de lo nuevo, sube este valor.</p>
     </div>
+    <div class="card" id="cardCopias">
+      <h2>Copias de la configuración</h2>
+      <p class="note" style="margin:0 0 8px">Cada vez que guardas, la configuración anterior se guarda como copia (las 10 últimas). Si un cambio
+        sale mal, vuelve a una de ellas.</p>
+      <div id="listaCopias"></div>
+      <p class="note ayuda">Las copias están en la carpeta <code>copias</code> de la app. Al restaurar una, la configuración que tienes ahora
+        también se guarda como copia, así que siempre puedes deshacerlo. Si tienes cambios sin guardar en la página, se pierden.</p>
+    </div>
   </div>
 
   <div class="pane hidden" id="paneActividad">
@@ -1006,8 +1057,7 @@ function normDisp(c, filtro) {
   if (c.gestos && c.gestos.distancia) out.gestos = { distancia: Number(c.gestos.distancia) };
   if (c.iluminacion) out.iluminacion = c.iluminacion;
   if (c.dpi) out.dpi = Number(c.dpi);
-  if (c.avisoBateria === false) out.avisoBateria = false;
-  return out;
+  if (c.avisoBateria === false) out.avisoBateria = false;  return out;
 }
 // La antigua acción/opción "ocr" (copiar texto de pantalla) pasa a ser la captura unificada, modo "texto".
 // La casilla "ocr" de la paleta (un booleano) no se toca.
@@ -1015,6 +1065,8 @@ function migrarCaptura(x) {
   if (Array.isArray(x)) { x.forEach(migrarCaptura); return; }
   if (x && typeof x === 'object') {
     if (x.accion === 'ocr') { delete x.atajo; x.accion = 'captura'; x.modo = x.modo || 'texto'; }
+    // La antigua acción «Copiar color de la pantalla» es ahora un modo de la captura
+    if (x.accion === 'color') { x.accion = 'captura'; x.modo = x.formato === 'rgb' ? 'colorRgb' : 'color'; delete x.formato; }
     if (x.tipo === 'ocr') { x.tipo = 'captura'; x.modo = x.modo || 'texto'; }
     for (const k in x) if (k !== 'accion' && k !== 'tipo') migrarCaptura(x[k]);
   }
@@ -1024,8 +1076,7 @@ function normalizar(cfg) {
   const v2 = cfg.raton || cfg.teclado;
   const out = { raton: normDisp(v2 ? cfg.raton : cfg, 'MX Master'), teclado: normDisp(v2 ? cfg.teclado : null, 'MX Keys') };
   out.raton.rueda = out.raton.rueda || {};
-  delete out.teclado.rueda; delete out.raton.iluminacion; delete out.teclado.dpi;
-  if (cfg.portapapeles && cfg.portapapeles.esperaMs) out.portapapeles = { esperaMs: Number(cfg.portapapeles.esperaMs) };
+  delete out.teclado.rueda; delete out.raton.iluminacion; delete out.teclado.dpi;  if (cfg.portapapeles && cfg.portapapeles.esperaMs) out.portapapeles = { esperaMs: Number(cfg.portapapeles.esperaMs) };
   if (cfg.listas && typeof cfg.listas === 'object') out.listas = cfg.listas;
   if (cfg.emparejamiento && typeof cfg.emparejamiento === 'object') out.emparejamiento = cfg.emparejamiento;
   migrarCaptura(out);
@@ -1087,6 +1138,9 @@ function describir(d, a) {
   if (a.accion === 'recolocar') return `recolocar ventana (${a.filas || 2} × ${a.columnas || 3})`;
   if (a.accion === 'dpi') return a.modo === 'ciclo' ? `velocidad del puntero: ${(a.valores || []).join(' / ')} ppp`
     : a.modo === 'precision' ? `modo precisión (${a.dpi || 400} ppp)` : `velocidad del puntero: ${a.dpi || '?'} ppp`;
+  if (a.accion === 'macro') { const n = (a.pasos || []).length; return `macro (${n} paso${n === 1 ? '' : 's'})`; }
+  if (a.accion === 'volumenApp') return a.modo === 'silenciar' ? 'silenciar la aplicación activa'
+    : `${a.modo === 'bajar' ? 'bajar' : 'subir'} volumen de la aplicación activa (${a.paso || 10} %)`;
   if (a.accion === 'equipo') {
     const quien = a.dispositivos === 'raton' ? 'el ratón' : a.dispositivos === 'teclado' ? 'el teclado' : 'teclado y ratón';
     return `pasar ${quien} ${a.canal && a.canal !== 'siguiente' ? 'al equipo ' + a.canal : 'al siguiente equipo'}`;
@@ -1568,8 +1622,13 @@ function editorComando(valor, onChange) {
 // ---------------------------------------------------------------- Editor de una lista de opciones
 // Cada opción: nombre + atajo, clic de un botón del ratón, texto a pegar o comando a ejecutar
 const CLICS_LISTA = [[0x0050, 'Clic izquierdo'], [0x0051, 'Clic derecho'], [0x0052, 'Clic central'], [0x0053, 'Atrás'], [0x0056, 'Adelante']];
+// Básicos (editor en la misma línea) y el resto de acciones de botón salvo gestos (con el editor de acciones debajo)
+const TIPOS_OPCION_EXTRA = [['claude', 'Chat con Claude'], ['equipo', 'Cambiar de equipo (Easy-Switch)'], ['menu', 'Lista de opciones'],
+  ['ventanas', 'Lista de programas abiertos'], ['macro', 'Macro (varias acciones seguidas)'], ['paleta', 'Paleta de comandos'],
+  ['recolocar', 'Recolocar ventana'], ['dpi', 'Velocidad del puntero (DPI)'], ['volumenApp', 'Volumen de la aplicación activa']];
 const TIPOS_OPCION = [['boton', 'Actuar como'], ['atajo', 'Atajo'], ['captura', 'Captura de pantalla'], ['ejecutar', 'Ejecutar'],
-                      ['texto', 'Plantilla de texto'], ['transformar', 'Transformar selección']];   // alfabético
+                      ['texto', 'Plantilla de texto'], ['transformar', 'Transformar selección'], ...TIPOS_OPCION_EXTRA].sort(porNombre);
+const esOpcionExtra = t => TIPOS_OPCION_EXTRA.some(([v]) => v === t);
 // Transformaciones del texto seleccionado (clave, nombre visible); 'elegir' solo existe como acción de botón
 const TRANSFORMACIONES = [
   ['elegir', 'Elegir en una lista (al pulsar)'], ['mayusculas', 'MAYÚSCULAS'], ['minusculas', 'minúsculas'],
@@ -1595,6 +1654,8 @@ const MODOS_CAPTURA = [
   ['texto', 'Recorte de pantalla → texto (OCR)'],
   ['imagen', 'Recorte de pantalla → imagen'],
   ['pantalla', 'Imprimir pantalla (Windows)'],
+  ['color', 'Color bajo el cursor (HEX)'],
+  ['colorRgb', 'Color bajo el cursor (RGB)'],
 ];
 const nombreCaptura = k => (MODOS_CAPTURA.find(([c]) => c === k) || [k, k])[1];
 function selectorCaptura(valor, onChange) {
@@ -1681,12 +1742,14 @@ function editorLista(opciones) {
       nom.addEventListener('input', () => { o.nombre = nom.value; marcarCambios(); });
       const tipo = document.createElement('select');
       tipo.innerHTML = TIPOS_OPCION.map(([v, t]) => `<option value="${v}">${t}</option>`).join('');
-      tipo.value = ['boton', 'texto', 'ejecutar', 'transformar', 'captura'].includes(o.tipo) ? o.tipo : 'atajo';
+      tipo.value = TIPOS_OPCION.some(([v]) => v === o.tipo) ? o.tipo : 'atajo';
+      if (esOpcionExtra(o.tipo)) o.accion = o.tipo;               // el editor de acciones lee el tipo de «accion»
       tipo.addEventListener('change', () => {
         // Se conserva solo el campo del tipo elegido
         const t = tipo.value, previo = { atajo: o.atajo, boton: o.boton, texto: o.texto, comando: o.comando, transformacion: o.transformacion, modo: o.modo };
-        for (const k of ['atajo', 'boton', 'texto', 'comando', 'transformacion', 'modo']) delete o[k];
+        for (const k of Object.keys(o)) if (k !== 'nombre' && k !== 'icono') delete o[k];
         o.tipo = t;
+        if (esOpcionExtra(t)) { Object.assign(o, accionInicial(t, {})); o.tipo = t; marcarCambios(); pintar(); return; }
         if (t === 'boton') o.boton = previo.boton || hex4(0x0050);
         else if (t === 'texto') o.texto = previo.texto || '';
         else if (t === 'ejecutar') o.comando = previo.comando || '';
@@ -1715,6 +1778,15 @@ function editorLista(opciones) {
         editor.appendChild(selectorTransformacion(o.transformacion, false, v => { o.transformacion = v; }));
       } else if (tipo.value === 'captura') {
         editor.appendChild(selectorCaptura(o.modo, v => { o.modo = v; }));
+      } else if (esOpcionExtra(tipo.value)) {
+        // El mismo editor que en un botón (sin su desplegable: el tipo se elige en el de la opción)
+        const { det, lado } = editorAccion({
+          obtener: () => o,
+          poner: v => { for (const k of Object.keys(o)) if (k !== 'nombre' && k !== 'icono') delete o[k]; if (v) Object.assign(o, v, { tipo: v.accion }); },
+          vacio: '', desviable: true, gestos: false, defecto: false, d: 'raton', destinos: EMULABLES,
+        });
+        editor.classList.add('opcionExtra');
+        editor.append(lado, det);
       } else {
         o.tipo = 'atajo';
         editor.appendChild(editorAtajo(o.atajo, v => { o.atajo = v; }));
@@ -1739,7 +1811,8 @@ function opcionesAccion(cfg) {
                               ['texto', 'Plantilla de texto'], ['ejecutar', 'Ejecutar programa o comando'],
                               ['transformar', 'Transformar selección'], ['captura', 'Captura de pantalla'],
                               ['paleta', 'Paleta de comandos'], ['claude', 'Chat con Claude'], ['recolocar', 'Recolocar ventana'],
-                              ['dpi', 'Velocidad del puntero (DPI)'],
+                              ['dpi', 'Velocidad del puntero (DPI)'], ['macro', 'Macro (varias acciones seguidas)'],
+                              ['volumenApp', 'Volumen de la aplicación activa'],
                               ['equipo', emp().easySwitch === false ? 'Cambiar de equipo (desactivado en Emparejamiento)' : 'Cambiar de equipo (Easy-Switch)']);
   if (cfg.gestos) ops.push(['gestos', 'Gestos (mantener y mover)']);
   if (cfg.destinos.length) ops.push(['boton', 'Actuar como otro botón']);
@@ -1869,6 +1942,8 @@ function editorAccion(cfg) {
         const nota = document.createElement('div'); nota.className = 'note'; nota.style.margin = '4px 0 0';
         nota.textContent = act.modo === 'pantalla'
           ? 'Envía la tecla Imprimir pantalla de Windows (captura toda la pantalla; en Windows 11 abre la herramienta de recortes si la tienes configurada así).'
+          : act.modo === 'color' || act.modo === 'colorRgb'
+            ? `Copia al portapapeles el color del punto que hay bajo el cursor al pulsar, en ${act.modo === 'colorRgb' ? 'RGB, p. ej. rgb(30, 144, 255)' : 'HEX, p. ej. #1E90FF'}. Pon el cursor encima del color y pulsa.`
           : act.modo === 'imagen'
             ? 'Oscurece la pantalla: dibuja un recuadro y la imagen se copia al portapapeles. Esc o clic derecho cancelan.'
             : 'Oscurece la pantalla: dibuja un recuadro y el texto reconocido (OCR de Windows, sin internet) se copia al portapapeles. Esc o clic derecho cancelan.';
@@ -2036,6 +2111,28 @@ function editorAccion(cfg) {
         det.appendChild(nota);
         break;
       }
+      case 'macro': det.appendChild(editorMacro(act)); break;
+      case 'volumenApp': {
+        const modo = document.createElement('select');
+        modo.innerHTML = [['subir', 'Subir'], ['bajar', 'Bajar'], ['silenciar', 'Silenciar / quitar silencio']].map(([v, t]) => `<option value="${v}">${t}</option>`).join('');
+        modo.value = act.modo || 'subir';
+        modo.addEventListener('change', () => { act.modo = modo.value; marcarCambios(); pintar(); });
+        lado.appendChild(modo);
+        if (modo.value !== 'silenciar') {
+          const fila = document.createElement('div'); fila.className = 'row';
+          const n = document.createElement('input'); n.type = 'number'; n.min = 1; n.max = 50; n.style.width = '70px'; n.value = act.paso || 10;
+          n.addEventListener('input', () => { const v = Number(n.value); if (v >= 1 && v <= 50) act.paso = v; marcarCambios(); });
+          const t1 = document.createElement('span'); t1.className = 'note'; t1.style.margin = '0'; t1.textContent = 'Cuánto';
+          const t2 = document.createElement('span'); t2.className = 'note'; t2.style.margin = '0'; t2.textContent = '% cada vez';
+          fila.append(t1, n, t2);
+          det.appendChild(fila);
+        }
+        const nota = document.createElement('div'); nota.className = 'note'; nota.style.margin = '6px 0 0';
+        nota.textContent = 'Solo cambia el volumen del programa que tiene el foco (como el mezclador de volumen de Windows), sin tocar el ' +
+          'del resto. Por ejemplo, bajar Teams sin bajar la música. Junto al cursor se ve cómo queda.';
+        det.appendChild(nota);
+        break;
+      }
       case 'boton': {
         // Segundo campo: a qué botón equivale
         const dest = document.createElement('select');
@@ -2050,54 +2147,72 @@ function editorAccion(cfg) {
     }
   };
   sel.addEventListener('change', () => {
-    const prev = cfg.obtener() || {};
-    const v = sel.value;
-    if (v === '') cfg.poner(undefined);
-    else if (v === 'defecto') cfg.poner({ accion: 'defecto' });
-    else if (v === 'atajo') cfg.poner({ accion: 'atajo', atajo: prev.atajo || '' });
-    else if (v === 'gestos') cfg.poner({ accion: 'gestos', gestos: prev.gestos || {} });
-    else if (v === 'menu') cfg.poner({ accion: 'menu', opciones: prev.opciones || [{ nombre: '', tipo: 'atajo', atajo: '' }] });
-    else if (v === 'texto') cfg.poner({ accion: 'texto', texto: prev.texto || '' });
-    else if (v === 'ejecutar') cfg.poner({ accion: 'ejecutar', comando: prev.comando || '' });
-    else if (v === 'ventanas') cfg.poner({ accion: 'ventanas' });
-    else if (v === 'transformar') cfg.poner({ accion: 'transformar', transformacion: 'elegir' });
-    else if (v === 'captura') cfg.poner({ accion: 'captura', modo: prev.modo || 'texto' });
-    else if (v === 'recolocar') cfg.poner({ accion: 'recolocar' });
-    else if (v === 'dpi') cfg.poner({ accion: 'dpi', modo: 'precision', dpi: 400 });
-    else if (v === 'equipo') cfg.poner({ accion: 'equipo', canal: 'siguiente', dispositivos: 'ambos' });
-    else if (v === 'paleta') cfg.poner({ accion: 'paleta', opciones: prev.opciones || [], ventanas: true, transformaciones: true, ocr: false });
-    else if (v === 'claude') cfg.poner({ accion: 'claude', url: prev.url || 'https://claude.ai/new',
-                                         seleccion: typeof prev.seleccion === 'boolean' ? prev.seleccion : false,
-                                         plantilla: prev.plantilla || 'Explícame esto:\n\n{seleccion}' });
-    else if (v === 'boton') cfg.poner({ accion: 'boton', boton: prev.boton && cfg.destinos.includes(cidDe(prev.boton)) ? prev.boton : hex4(cfg.destinos[0]) });
+    cfg.poner(accionInicial(sel.value, cfg.obtener() || {}, cfg.destinos));
     pintar(); marcarCambios();
   });
   pintar();
   return { sel, det, lado };
 }
+// Acción recién elegida en un desplegable: sus valores de partida (conservando lo que sirva de la anterior, prev)
+function accionInicial(v, prev, destinos = []) {
+  switch (v) {
+    case '': return undefined;
+    case 'defecto': return { accion: 'defecto' };
+    case 'atajo': return { accion: 'atajo', atajo: prev.atajo || '' };
+    case 'gestos': return { accion: 'gestos', gestos: prev.gestos || {} };
+    case 'menu': return { accion: 'menu', opciones: prev.opciones || [{ nombre: '', tipo: 'atajo', atajo: '' }] };
+    case 'texto': return { accion: 'texto', texto: prev.texto || '' };
+    case 'ejecutar': return { accion: 'ejecutar', comando: prev.comando || '' };
+    case 'ventanas': return { accion: 'ventanas' };
+    case 'transformar': return { accion: 'transformar', transformacion: 'elegir' };
+    case 'captura': return { accion: 'captura', modo: prev.modo || 'texto' };
+    case 'recolocar': return { accion: 'recolocar' };
+    case 'dpi': return { accion: 'dpi', modo: 'precision', dpi: 400 };
+    case 'equipo': return { accion: 'equipo', canal: 'siguiente', dispositivos: 'ambos' };
+    case 'macro': return { accion: 'macro', pasos: [{ accion: 'atajo', atajo: '' }] };
+    case 'volumenApp': return { accion: 'volumenApp', modo: 'subir', paso: 10 };
+    case 'paleta': return { accion: 'paleta', opciones: prev.opciones || [], ventanas: true, transformaciones: true, ocr: false };
+    case 'claude': return { accion: 'claude', url: prev.url || 'https://claude.ai/new',
+                            seleccion: typeof prev.seleccion === 'boolean' ? prev.seleccion : false,
+                            plantilla: prev.plantilla || 'Explícame esto:\n\n{seleccion}' };
+    case 'boton': return { accion: 'boton', boton: prev.boton && destinos.includes(cidDe(prev.boton)) ? prev.boton : hex4(destinos[0]) };
+  }
+}
 // Gestos: cada dirección admite las mismas acciones que un botón, salvo gestos. Se muestran como fichas en cruz
 // (en la posición del movimiento) con su resumen; el editor de la elegida va debajo, uno cada vez.
 const gestoElegido = new WeakMap();                      // dirección abierta en el editor de gestos de cada botón
+// Icono (Segoe Fluent Icons) de cada dirección: flechas y una mano para pulsar sin mover
+const ICONO_GESTO = { clic: '', arriba: '', abajo: '', izquierda: '', derecha: '' };
+// Gestos: un círculo repartido en cuatro gajos (arriba, derecha, abajo, izquierda) con «Pulsar» en el centro y, al lado,
+// la leyenda con lo que hace cada dirección. Gajo o línea de la leyenda eligen la dirección; su editor va debajo.
 function editorGestos(act, d) {
   const cont = document.createElement('div'); cont.className = 'gestos';
+  const compacto = document.createElement('div'); compacto.className = 'gestosCompacto';
   const cruz = document.createElement('div'); cruz.className = 'gestosCruz';
+  const leyenda = document.createElement('div'); leyenda.className = 'leyendaGestos';
+  compacto.append(cruz, leyenda);
   const panel = document.createElement('div'); panel.className = 'gestoPanel';
-  const fichas = {}, editores = {};
+  const fichas = {}, lineas = {}, editores = {};
   const elegir = dir => {
     gestoElegido.set(act, dir);
-    for (const k of Object.keys(fichas)) { fichas[k].classList.toggle('abierto', k === dir); editores[k].hidden = k !== dir; }
+    for (const k of Object.keys(fichas)) {
+      fichas[k].classList.toggle('abierto', k === dir); lineas[k].classList.toggle('sel', k === dir); editores[k].hidden = k !== dir;
+    }
   };
   for (const [dir, txt] of DIRS) {
     if (typeof act.gestos[dir] === 'string') act.gestos[dir] = { accion: 'atajo', atajo: act.gestos[dir] };   // formato antiguo
+    const nom = dir === 'clic' ? 'Pulsar' : txt.replace(/^\S+\s+/, '');           // la flecha ya va en el icono
     const ficha = document.createElement('button');
     ficha.type = 'button'; ficha.className = 'gestoFicha'; ficha.dataset.dir = dir;
-    ficha.innerHTML = '<span class="gDir"></span><span class="gRes"></span>';
-    ficha.querySelector('.gDir').textContent = dir === 'clic' ? 'Pulsar' : txt;
-    const res = ficha.querySelector('.gRes');
+    ficha.innerHTML = `<span class="gIco" aria-hidden="true">${ICONO_GESTO[dir]}</span>`;
+    const linea = document.createElement('button'); linea.type = 'button';
+    linea.innerHTML = `<span class="lIco" aria-hidden="true">${ICONO_GESTO[dir]}</span><span class="lDir">${nom}</span><span class="lRes"></span>`;
+    const res = linea.querySelector('.lRes');
     const pintarRes = () => {
       const a = act.gestos[dir], hay = !!(a && a.accion);
       res.textContent = hay ? mayuscula(describir(d, a)) : 'Nada'; res.title = res.textContent;
-      ficha.classList.toggle('conAccion', hay);
+      ficha.title = `${dir === 'clic' ? 'Pulsar sin mover' : txt}: ${res.textContent}`;
+      ficha.classList.toggle('conAccion', hay); linea.classList.toggle('con', hay);
     };
     const { sel, det, lado } = editorAccion({
       obtener: () => act.gestos[dir],
@@ -2113,12 +2228,109 @@ function editorGestos(act, d) {
     ed.append(tit, fila, det);
     for (const ev of ['input', 'change', 'click']) ed.addEventListener(ev, () => setTimeout(pintarRes));
     ficha.addEventListener('click', () => elegir(dir));
-    fichas[dir] = ficha; editores[dir] = ed;
-    cruz.appendChild(ficha); panel.appendChild(ed);
+    linea.addEventListener('click', () => elegir(dir));
+    fichas[dir] = ficha; lineas[dir] = linea; editores[dir] = ed;
+    cruz.appendChild(ficha); leyenda.appendChild(linea); panel.appendChild(ed);
     pintarRes();
   }
+  // Rueda junto al cursor al mantener este botón (opción de cada botón con gestos)
+  const opcRueda = document.createElement('div'); opcRueda.className = 'opcRueda';
+  const pintarOpcRueda = () => {
+    opcRueda.innerHTML = '';
+    const lab = document.createElement('label'); lab.className = 'interruptor';
+    lab.title = 'Al mantener el botón aparece junto al cursor la rueda con lo que hace cada dirección; se ilumina la que se ejecutará al soltar';
+    const chk = document.createElement('input'); chk.type = 'checkbox'; chk.checked = !!act.rueda;
+    chk.addEventListener('change', () => {
+      if (chk.checked) act.rueda = true; else { delete act.rueda; delete act.ruedaEspera; }
+      marcarCambios(); pintarOpcRueda();
+    });
+    lab.append(chk, ' Mostrar la rueda al mantener');
+    opcRueda.appendChild(lab);
+    if (act.rueda) {
+      const fila = document.createElement('span'); fila.className = 'note'; fila.style.margin = '0';
+      const n = document.createElement('input'); n.type = 'number'; n.min = 0; n.max = 1500; n.step = 50; n.style.width = '70px';
+      n.value = act.ruedaEspera !== undefined ? act.ruedaEspera : 300;
+      n.addEventListener('input', () => {
+        const v = Number(n.value);
+        if (n.value !== '' && v >= 0 && v <= 1500) { if (v === 300) delete act.ruedaEspera; else act.ruedaEspera = v; }
+        marcarCambios();
+      });
+      fila.append('tras ', n, ' ms');
+      opcRueda.appendChild(fila);
+    }
+  };
+  pintarOpcRueda();
+  leyenda.appendChild(opcRueda);
   elegir(gestoElegido.get(act) || 'clic');
-  cont.append(cruz, panel);
+  cont.append(compacto, panel);
+  return cont;
+}
+// ---------------------------------------------------------------- Macro: pasos en orden
+// Cada paso es un atajo, un texto (plantilla), un programa a ejecutar, un clic de un botón del ratón o una pausa.
+const TIPOS_PASO = [['atajo', 'Atajo de teclado'], ['texto', 'Pegar texto'], ['ejecutar', 'Ejecutar'], ['boton', 'Clic de un botón'], ['pausa', 'Pausa']];
+function pasoValido(p) {
+  switch (p.accion) {
+    case 'atajo': return atajoValido(p.atajo);
+    case 'texto': return !!p.texto;
+    case 'ejecutar': return !!(p.comando || '').trim();
+    case 'boton': return !!p.boton;
+    case 'pausa': return Number(p.ms) >= 10 && Number(p.ms) <= 10000;
+    default: return false;
+  }
+}
+function editorMacro(act) {
+  const cont = document.createElement('div'); cont.className = 'macro';
+  if (!Array.isArray(act.pasos)) act.pasos = [];
+  const pintar = () => {
+    cont.innerHTML = '';
+    act.pasos.forEach((p, i) => {
+      const fila = document.createElement('div'); fila.className = 'pasoMacro';
+      const num = document.createElement('span'); num.className = 'numPaso'; num.textContent = i + 1;
+      const tipo = document.createElement('select');
+      tipo.innerHTML = TIPOS_PASO.map(([v, t]) => `<option value="${v}">${t}</option>`).join('');
+      tipo.value = p.accion;
+      tipo.addEventListener('change', () => {
+        const v = tipo.value;
+        act.pasos[i] = v === 'pausa' ? { accion: 'pausa', ms: 300 } : v === 'boton' ? { accion: 'boton', boton: hex4(0x0050) }
+          : v === 'texto' ? { accion: 'texto', texto: '' } : v === 'ejecutar' ? { accion: 'ejecutar', comando: '' } : { accion: 'atajo', atajo: '' };
+        marcarCambios(); pintar();
+      });
+      const campo = document.createElement('div'); campo.className = 'campoPaso';
+      if (p.accion === 'atajo') campo.appendChild(editorAtajo(p.atajo, v => { p.atajo = v; }));
+      else if (p.accion === 'texto') campo.appendChild(editorTexto(p.texto, v => { p.texto = v; }));
+      else if (p.accion === 'ejecutar') campo.appendChild(editorComando(p.comando, v => { p.comando = v; }));
+      else if (p.accion === 'boton') {
+        const b = document.createElement('select');
+        b.innerHTML = [0x0050, 0x0051, 0x0052, 0x0053, 0x0056].map(c => `<option value="${hex4(c)}">${nombre('raton', c)}</option>`).join('');
+        b.value = hex4(cidDe(p.boton));
+        if (b.selectedIndex < 0) { b.selectedIndex = 0; p.boton = b.value; }
+        b.addEventListener('change', () => { p.boton = b.value; marcarCambios(); });
+        campo.appendChild(b);
+      } else {
+        const n = document.createElement('input'); n.type = 'number'; n.min = 10; n.max = 10000; n.step = 50; n.style.width = '90px'; n.value = p.ms;
+        const pintarN = () => { n.style.borderColor = pasoValido(p) ? 'var(--line)' : 'var(--err)'; };
+        n.addEventListener('input', () => { p.ms = Number(n.value); pintarN(); marcarCambios(); });
+        const ms = document.createElement('span'); ms.className = 'note'; ms.style.margin = '0'; ms.textContent = 'ms';
+        campo.append(n, ms); campo.classList.add('row'); pintarN();
+      }
+      const mover = (d) => { const j = i + d; [act.pasos[i], act.pasos[j]] = [act.pasos[j], act.pasos[i]]; marcarCambios(); pintar(); };
+      const btn = (texto, titulo, fn, desactivado) => {
+        const b = document.createElement('button'); b.type = 'button'; b.className = 'fantasma icono-btn'; b.textContent = texto; b.title = titulo;
+        b.disabled = !!desactivado; b.addEventListener('click', fn); return b;
+      };
+      const acciones = document.createElement('span'); acciones.className = 'accionesPaso';
+      acciones.append(btn('↑', 'Subir', () => mover(-1), i === 0), btn('↓', 'Bajar', () => mover(1), i === act.pasos.length - 1),
+        btn('✕', 'Quitar paso', () => { act.pasos.splice(i, 1); marcarCambios(); pintar(); }));
+      fila.append(num, tipo, campo, acciones);
+      cont.appendChild(fila);
+    });
+    const add = document.createElement('button'); add.type = 'button'; add.className = 'addPuls'; add.textContent = '+ Añadir paso';
+    add.addEventListener('click', () => { act.pasos.push({ accion: 'atajo', atajo: '' }); marcarCambios(); pintar(); });
+    const nota = document.createElement('div'); nota.className = 'note'; nota.style.margin = '6px 0 0';
+    nota.textContent = 'Se ejecutan en orden, con un pequeño margen entre pasos. Si una aplicación es lenta, añade una pausa entre los pasos.';
+    cont.append(add, nota);
+  };
+  pintar();
   return cont;
 }
 // Velocidades del puntero: lo que admite el ratón conectado (si no, el rango del MX Master 3S)
@@ -2132,6 +2344,7 @@ function dpiValido(v) {
   return v.dpi === undefined ? v.modo === 'precision' : dpiOk(Number(v.dpi));
 }
 function opcionValida(o) {
+  if (esOpcionExtra(o.tipo)) return accionValida(Object.assign({}, o, { accion: o.tipo }));
   return o.tipo === 'boton' ? !!o.boton : o.tipo === 'texto' ? !!o.texto
        : o.tipo === 'ejecutar' ? !!(o.comando || '').trim()
        : o.tipo === 'transformar' ? !!o.transformacion : (o.tipo === 'ocr' || o.tipo === 'captura') ? true : atajoValido(o.atajo);
@@ -2151,6 +2364,8 @@ function accionValida(v) {
     case 'recolocar': return true;
     case 'dpi': return dpiValido(v);
     case 'equipo': return true;
+    case 'macro': return Array.isArray(v.pasos) && v.pasos.length > 0 && v.pasos.every(pasoValido);
+    case 'volumenApp': return true;
     case 'claude': {
       const llevar = v.llevar || (v.seleccion === true ? 'seleccion' : '');
       const usaPlantilla = llevar === 'seleccion' || llevar === 'recorteTexto' || llevar === 'elegir';
@@ -2733,6 +2948,40 @@ for (const d of DEVS) {
   }));
 }
 
+// ---------------------------------------------------------------- Copias de la configuración (Ajustes)
+async function cargarCopias() {
+  const cont = $('listaCopias');
+  let r;
+  try { r = await api('/api/copias'); } catch {
+    cont.innerHTML = '<p class="note" style="margin:0">No se pudo leer la lista de copias. Si acabas de actualizar la app, cierra el servidor y vuelve a abrir iniciar.cmd.</p>';
+    return;
+  }
+  cont.innerHTML = '';
+  if (!r.copias || !r.copias.length) {
+    cont.innerHTML = '<div class="vacio"><span class="glifoVacio" aria-hidden="true"></span><span>Aún no hay copias: se crea una cada vez que guardas un cambio.</span></div>';
+    return;
+  }
+  const tabla = document.createElement('table'); const cuerpo = document.createElement('tbody');
+  r.copias.forEach((c, i) => {
+    const tr = document.createElement('tr');
+    const fecha = document.createElement('td'); fecha.textContent = c.fecha + (i === 0 ? ' (la más reciente)' : '');
+    const tam = document.createElement('td'); tam.className = 'note'; tam.textContent = (c.bytes / 1024).toLocaleString('es-ES', { maximumFractionDigits: 1 }) + ' KB';
+    const acc = document.createElement('td');
+    const b = document.createElement('button'); b.type = 'button'; b.textContent = 'Restaurar';
+    b.addEventListener('click', async () => {
+      if (!confirm(`¿Volver a la configuración del ${c.fecha}?` + (cambios ? '\n\nTienes cambios sin guardar en la página: se perderán.' : ''))) return;
+      try {
+        await api('/api/copias/restaurar', { nombre: c.nombre });
+        await cargarConfig(); cargarCopias();
+        aviso(`Configuración del ${c.fecha} restaurada y aplicada`, 'ok');
+      } catch (e) { aviso('No se pudo restaurar: ' + e.message, 'err'); }
+    });
+    acc.appendChild(b);
+    tr.append(fecha, tam, acc); cuerpo.appendChild(tr);
+  });
+  tabla.appendChild(cuerpo); cont.appendChild(tabla);
+}
+
 // ---------------------------------------------------------------- Aspecto de las listas
 // Aspecto general + listas (icono / etiqueta / contenido) + rejillas (r*, columnas, tamaño de los iconos)
 const LISTAS_DEF = { tema: 'oscuro', acento: '#2f6fdf', opacidad: 100, radio: 0, letra: 10, espaciado: 'normal', difuminado: 'no',
@@ -2963,12 +3212,22 @@ $('btnGuardar').addEventListener('click', async () => {
     }
   }
   if (malos.length) { aviso('Revisa los atajos de: ' + malos.join(', '), 'err'); return; }
+  guardando(true);
   try {
     await api('/api/config', JSON.stringify(config, null, 2));
     marcarCambios(false);
     aviso('Configuración guardada y aplicada', 'ok');
+    if (!$('paneAjustes').classList.contains('hidden')) cargarCopias();
   } catch (e) { aviso('No se pudo guardar: ' + e.message, 'err'); }
+  finally { guardando(false); }
 });
+// Mientras se guarda, el botón muestra una rueda girando y no se puede volver a pulsar (tampoco con Ctrl+S)
+const ICONO_GUARDAR = $('btnGuardar').innerHTML;
+function guardando(si) {
+  const b = $('btnGuardar');
+  b.disabled = si; b.classList.toggle('ocupado', si);
+  b.innerHTML = si ? '<span class="girando" aria-hidden="true"></span>Guardando…' : ICONO_GUARDAR;
+}
 $('btnDeshacer').addEventListener('click', async () => {
   try { await cargarConfig(); aviso('Cambios descartados'); } catch (e) { aviso('Error: ' + e.message, 'err'); }
 });
@@ -3067,8 +3326,7 @@ async function refrescarEstado() {
   $('chkBandejaRaton').checked = !!(estado.bandeja && estado.bandeja.raton);
   pintarAhora($('ruedaActual'), 'Ahora en el ratón', estado.raton.rueda);
   pintarLuzActual(estado.teclado);
-  pintarDpiActual(estado.raton);
-  for (const d of DEVS) pintarEquipo(d, estado[d]);
+  pintarDpiActual(estado.raton);  for (const d of DEVS) pintarEquipo(d, estado[d]);
   const log = $('log');
   const abajo = log.scrollTop + log.clientHeight >= log.scrollHeight - 4;
   log.textContent = estado.registro.join('\n');
@@ -3137,6 +3395,7 @@ function textoAccion(d, a) {
   for (const g of Object.values(a.gestos || {})) partes.push(textoAccion(d, g));
   for (const p of (Array.isArray(a.pulsaciones) ? a.pulsaciones : [])) partes.push(p.tipo === 'doble' ? 'doble clic' : 'pulsación larga', textoAccion(d, p));
   for (const o of (Array.isArray(a.opciones) ? a.opciones : [])) partes.push(o.nombre, o.atajo, o.texto, o.comando);
+  for (const p of (Array.isArray(a.pasos) ? a.pasos : [])) partes.push(p.atajo, p.texto, p.comando);
   return partes.filter(Boolean).join(' ');
 }
 // Ajustes que se pueden buscar: [pestaña, tarjeta, título, palabras clave]
@@ -3151,6 +3410,7 @@ const AJUSTES_BUSCAR = [
   ['listas', 'paneListas', 'Apariencia de listas y rejillas', 'aspecto tema color transparencia difuminado esquinas iconos paleta'],
   ['ajustes', 'cardEmparejamiento', 'Emparejamiento (Easy-Switch)', 'canal equipo cambiar seguir otro dispositivo'],
   ['ajustes', 'cardPortapapeles', 'Portapapeles', 'espera pegar devolver'],
+  ['ajustes', 'cardCopias', 'Copias de la configuración', 'copia seguridad restaurar version anterior deshacer'],
 ];
 const NOMBRE_TAB = { teclado: 'Teclado', raton: 'Ratón', listas: 'Apariencia', ajustes: 'Ajustes' };
 function indiceBusqueda() {
@@ -3239,6 +3499,12 @@ buscar.addEventListener('keydown', e => {
 });
 document.addEventListener('keydown', e => {
   if ((e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey && e.key.toLowerCase() === 'f') { e.preventDefault(); buscar.focus(); buscar.select(); }
+  // Ctrl+S: guardar y aplicar (en vez de «Guardar página como» del navegador)
+  if ((e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey && e.key.toLowerCase() === 's') {
+    e.preventDefault();
+    if (document.activeElement) document.activeElement.blur();      // que el campo que se estaba editando termine de aplicarse
+    $('btnGuardar').click();
+  }
 });
 
 // Pestañas de la configuración: Teclado / Ratón (con el nombre del periférico conectado) / Listas / Actividad / Registro
@@ -3248,6 +3514,7 @@ function activarTab(clave) {
   for (const [k, id] of Object.entries(PANES)) $(id).classList.toggle('hidden', k !== clave);
   $('configScroll').scrollTop = 0;
   if (clave === 'actividad' && !$('log').hidden) $('log').scrollTop = $('log').scrollHeight;
+  if (clave === 'ajustes') cargarCopias();
 }
 // Actividad: eventos en directo o registro del servidor
 for (const b of document.querySelectorAll('#vistaActividad button')) {

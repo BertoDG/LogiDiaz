@@ -103,6 +103,24 @@ function Cid-De([string]$s) {
     throw "Boton desconocido: '$s'"
 }
 
+# ---- Copias de la configuracion (carpeta copias): antes de sobrescribirla se guarda la version anterior; quedan las 10 ultimas ----
+$copiasDir = Join-Path $dir 'copias'
+function Guardar-Copia([string]$nuevoTexto) {
+    if (-not (Test-Path $cfgFile)) { return }
+    $actual = [IO.File]::ReadAllText($cfgFile, [Text.Encoding]::UTF8)
+    if ($actual -eq $nuevoTexto) { return }                     # sin cambios: no hace falta copia
+    if (-not (Test-Path $copiasDir)) { [void](New-Item -ItemType Directory -Path $copiasDir) }
+    [IO.File]::WriteAllText((Join-Path $copiasDir ('configuracion-{0:yyyyMMdd-HHmmss}.json' -f (Get-Date))), $actual, $utf8SinBom)
+    Get-ChildItem -Path $copiasDir -Filter 'configuracion-*.json' | Sort-Object Name -Descending | Select-Object -Skip 10 |
+        ForEach-Object { try { Remove-Item -LiteralPath $_.FullName -ErrorAction Stop } catch { } }
+}
+function Listar-Copias {
+    if (-not (Test-Path $copiasDir)) { return @() }
+    return @(Get-ChildItem -Path $copiasDir -Filter 'configuracion-*.json' | Sort-Object Name -Descending | ForEach-Object {
+        [ordered]@{ nombre = $_.Name; fecha = $_.LastWriteTime.ToString('dd/MM/yyyy HH:mm:ss'); bytes = $_.Length }
+    })
+}
+
 # Devuelve el texto JSON de la configuracion; migra atajos.json (version anterior) si hace falta.
 function Leer-ConfigTexto {
     if (Test-Path $cfgFile) { return [IO.File]::ReadAllText($cfgFile, [Text.Encoding]::UTF8) }
@@ -150,6 +168,31 @@ function Poner-FormatoLista($perfil, [int]$cid, $v) {
     if ($f[0] -ge 0 -or $f[1] -ge 0 -or $f[2] -ge 0 -or $f[3] -ge 0) { $perfil.FormatoListas[$cid] = [int[]]$f }
 }
 
+# Acciones de boton que tambien puede ser una opcion de lista (tipo -> texto secundario de la opcion)
+$nombresAccionLista = @{ menu = 'Lista'; ventanas = 'Programas abiertos'; paleta = 'Paleta'; claude = 'Chat con Claude'; recolocar = 'Recolocar ventana'
+                         dpi = 'Velocidad del puntero'; equipo = 'Cambiar de equipo'; macro = 'Macro'; volumenApp = 'Volumen de la aplicacion' }
+# Texto corto de una accion para la rueda de gestos (el atajo, el programa, "Lista"...)
+function Etiqueta-Accion($v) {
+    if ($v -is [string]) { return $v }
+    $t = [string]$v.accion
+    switch ($t) {
+        'atajo' { return [string]$v.atajo }
+        'texto' { $una = ([string]$v.texto -replace '\s+', ' ').Trim(); return $(if ($una.Length -gt 22) { $una.Substring(0, 22) + '...' } else { $una }) }
+        'ejecutar' {
+            # El programa sin ruta ni extension: entre comillas si las lleva; si no, hasta el primer espacio
+            $c = ([string]$v.comando).Trim()
+            $prog = if ($c -match '^"([^"]+)"') { $Matches[1] } else { $c.Split(' ')[0] }
+            $nom = [IO.Path]::GetFileNameWithoutExtension($prog)
+            return $(if ($nom) { $nom } else { $prog })
+        }
+        'boton' { $bc = 0; try { $bc = Cid-De ([string]$v.boton) } catch { }; return $(if ($botonesClic.ContainsKey($bc)) { $botonesClic[$bc] } else { 'Boton' }) }
+        'transformar' { return 'Transformar' }
+        'captura' { return 'Captura' }
+        'ocr' { return 'Texto de pantalla' }
+    }
+    if ($nombresAccionLista.ContainsKey($t)) { return $nombresAccionLista[$t] }
+    return $t
+}
 function Convertir-Opciones($opciones, $errores, [string]$donde) {
     $lista = New-Object 'System.Collections.Generic.List[LogiRaton.Opcion]'
     $n = 0
@@ -183,9 +226,16 @@ function Convertir-Opciones($opciones, $errores, [string]$donde) {
                 # Captura de pantalla: texto (OCR), imagen (recorte) o pantalla (Imprimir pantalla)
                 $modo = ([string]$o.modo).Trim().ToLower()
                 if (-not $modo) { $modo = 'texto' }
-                if ($modo -notin 'texto', 'imagen', 'pantalla') { throw "Modo de captura no valido: '$($o.modo)'" }
+                if ($modo -notin 'texto', 'imagen', 'pantalla', 'color', 'colorRgb') { throw "Modo de captura no valido: '$($o.modo)'" }
                 $op.Captura = $modo
-                $op.Detalle = @{ texto = 'Recorte a texto'; imagen = 'Recorte a imagen'; pantalla = 'Imprimir pantalla' }[$modo]
+                $op.Detalle = @{ texto = 'Recorte a texto'; imagen = 'Recorte a imagen'; pantalla = 'Imprimir pantalla'; color = 'Color (HEX)'; colorRgb = 'Color (RGB)' }[$modo]
+            } elseif ($nombresAccionLista.ContainsKey([string]$o.tipo)) {
+                # Cualquier otra accion de boton (salvo gestos): la opcion lleva sus campos y se convierte como un boton
+                $o2 = $o | Select-Object *
+                $o2 | Add-Member -NotePropertyName accion -NotePropertyValue ([string]$o.tipo) -Force
+                $acc = Accion-Desde $o2 $errores $donde
+                if (-not $acc) { continue }                          # el error ya esta anotado
+                $op.Hacer = $acc; $op.Detalle = $nombresAccionLista[[string]$o.tipo]
             } else {
                 $op.Teclas = [LogiRaton.Keys]::ParseCombo([string]$o.atajo); $op.Detalle = [string]$o.atajo
             }
@@ -245,7 +295,7 @@ function Accion-Desde($v, $errores, [string]$donde) {
                 # Captura de pantalla: texto (OCR), imagen (recorte) o pantalla (Imprimir pantalla)
                 $modo = ([string]$v.modo).Trim().ToLower()
                 if (-not $modo) { $modo = 'texto' }
-                if ($modo -notin 'texto', 'imagen', 'pantalla') { throw "Modo de captura no valido: '$($v.modo)'" }
+                if ($modo -notin 'texto', 'imagen', 'pantalla', 'color', 'colorRgb') { throw "Modo de captura no valido: '$($v.modo)'" }
                 $a.Tipo = 'captura'; $a.Modo = $modo
             }
             'claude' {
@@ -287,6 +337,41 @@ function Accion-Desde($v, $errores, [string]$donde) {
                 if (-not $q) { $q = 'ambos' }
                 if ($q -notin 'ambos', 'raton', 'teclado') { throw "Dispositivos no validos: '$($v.dispositivos)'" }
                 $a.Dispositivos = $q
+            }
+            'macro' {
+                # Pasos en orden: atajo, texto, ejecutar o boton (clic), y pausas { accion: pausa, ms }
+                $a.Tipo = 'macro'
+                $a.Pasos = New-Object 'System.Collections.Generic.List[LogiRaton.Accion]'
+                $i = 0
+                foreach ($p in @($v.pasos)) {
+                    $i++
+                    if ($null -eq $p) { continue }
+                    if ([string]$p.accion -eq 'pausa') {
+                        $ms = 0
+                        if (-not ([int]::TryParse([string]$p.ms, [ref]$ms) -and $ms -ge 10 -and $ms -le 10000)) { throw "Paso ${i}: pausa no valida '$($p.ms)' (10-10000 ms)" }
+                        $pa = New-Object LogiRaton.Accion; $pa.Tipo = 'pausa'; $pa.Valor = $ms; $a.Pasos.Add($pa); continue
+                    }
+                    if ([string]$p.accion -notin 'atajo', 'texto', 'ejecutar', 'boton') { throw "Paso ${i}: accion no admitida en una macro '$($p.accion)'" }
+                    $pa = Accion-Desde $p $errores "$donde, paso $i"
+                    if ($pa) { $a.Pasos.Add($pa) }
+                }
+                if ($a.Pasos.Count -eq 0) { throw 'La macro no tiene pasos' }
+            }
+            'volumenApp' {
+                # Volumen solo de la aplicacion activa: subir / bajar (paso en %) o silenciar
+                $modo = ([string]$v.modo).Trim().ToLower()
+                if (-not $modo) { $modo = 'subir' }
+                if ($modo -notin 'subir', 'bajar', 'silenciar') { throw "Modo de volumen no valido: '$($v.modo)'" }
+                $a.Tipo = 'volumenApp'; $a.Modo = $modo
+                $n = 0
+                $a.Valor = if ([int]::TryParse([string]$v.paso, [ref]$n) -and $n -ge 1 -and $n -le 50) { $n } else { 10 }
+            }
+            'color' {
+                # Color del pixel bajo el cursor, al portapapeles: hex (#1E90FF) o rgb (rgb(30, 144, 255))
+                $fmt = ([string]$v.formato).Trim().ToLower()
+                if (-not $fmt) { $fmt = 'hex' }
+                if ($fmt -notin 'hex', 'rgb') { throw "Formato de color no valido: '$($v.formato)'" }
+                $a.Tipo = 'color'; $a.Modo = $fmt
             }
             'paleta' {
                 # Lista de opciones propias mas, si se piden, las ventanas abiertas, las transformaciones y el OCR
@@ -375,7 +460,7 @@ function Convertir-Botones($botones, $errores, [string]$ambito) {
                 $perfil.Menus[$cid] = Convertir-Opciones $b.opciones $errores ("{0}, boton {1}" -f $ambito, $p.Name)
                 Poner-FormatoLista $perfil $cid $b
             }
-            elseif ($b.accion -in 'transformar', 'ocr', 'captura', 'paleta', 'claude', 'recolocar', 'dpi', 'equipo') {
+            elseif ($b.accion -in 'transformar', 'ocr', 'captura', 'paleta', 'claude', 'recolocar', 'dpi', 'equipo', 'macro', 'volumenApp', 'color') {
                 $acc = Accion-Desde $b $errores ("{0}, boton {1}" -f $ambito, $p.Name)
                 if ($acc) { $perfil.Otras[$cid] = $acc }
             }
@@ -384,9 +469,15 @@ function Convertir-Botones($botones, $errores, [string]$ambito) {
                 $g = New-Object 'System.Collections.Generic.Dictionary[string,LogiRaton.Accion]'
                 foreach ($d in 'clic', 'arriba', 'abajo', 'izquierda', 'derecha') {
                     $acc = Accion-Desde $b.gestos.$d $errores ("{0}, boton {1}, gesto {2}" -f $ambito, $p.Name, $d)
-                    if ($acc) { $g[$d] = $acc }
+                    if ($acc) { $acc.Etiqueta = Etiqueta-Accion $b.gestos.$d; $g[$d] = $acc }
                 }
                 $perfil.Gestos[$cid] = $g
+                # Rueda de gestos junto al cursor al mantener el boton: { rueda: true, ruedaEspera: ms (0-1500, 300 por defecto) }
+                if ($b.rueda) {
+                    $esp = 300; $n = 0
+                    if ([int]::TryParse([string]$b.ruedaEspera, [ref]$n)) { $esp = [Math]::Max(0, [Math]::Min(1500, $n)) }
+                    $perfil.RuedaGestos[$cid] = $esp
+                }
             }
         } catch { [void]$errores.Add(("{0}, boton {1}: {2}" -f $ambito, $p.Name, (Mensaje-Error $_))) }
         # Pulsaciones extra del boton: [ { tipo: "doble" | "larga", accion: ..., ... } ]
@@ -582,7 +673,7 @@ function Estado-Dispositivo($m) {
         bateria = $s.Bateria; cargando = $s.Cargando
         dpi = $(if ($s.Dpi) { [ordered]@{ actual = $s.Dpi[0]; minimo = $s.Dpi[1]; maximo = $s.Dpi[2]; paso = $s.Dpi[3]; fabrica = $s.Dpi[4] } } else { $null })
         equipos = $(if ($s.Equipos) { [ordered]@{ canales = $s.Equipos[0]; actual = $s.Equipos[1] } } else { $null })
-        luz =$(if ($s.Luz) { [ordered]@{ activa = [bool]$s.Luz[0]; modo = $(if ($s.Luz[1] -eq 3) { 'manual' } else { 'automatico' })
+        luz = $(if ($s.Luz) { [ordered]@{ activa = [bool]$s.Luz[0]; modo = $(if ($s.Luz[1] -eq 3) { 'manual' } else { 'automatico' })
                                          nivel = $s.Luz[2] + 1; niveles = $s.Luz[3]
                                          apagarManosFuera = $s.Luz[4]; apagarManosCerca = $s.Luz[5]; apagarConCorriente = $s.Luz[6] } } else { $null })
     }
@@ -702,10 +793,31 @@ function Atender($ctx) {
             try { $cfg = $txt | ConvertFrom-Json } catch { Responder $ctx 400 (Json @{ errores = @('JSON no valido') }); return }
             $conv = Convertir-Config $cfg
             if ($conv.errores.Count -gt 0) { Responder $ctx 400 (Json @{ errores = @($conv.errores) }); return }
+            try { Guardar-Copia $txt } catch { Log ("No se pudo guardar la copia de la configuracion: {0}" -f (Mensaje-Error $_)) }
             [IO.File]::WriteAllText($cfgFile, $txt, $utf8SinBom)
             Aplicar-Config $conv
             Cargar-OcrSiHaceFalta $txt
             Log 'Configuracion guardada y aplicada'
+            Responder $ctx 200 (Json @{ ok = $true })
+        }
+        'GET /api/copias' {
+            Responder $ctx 200 (Json @{ copias = @(Listar-Copias) })
+        }
+        'POST /api/copias/restaurar' {
+            # Vuelve a una copia: se comprueba como al guardar, se guarda copia de la actual y se aplica
+            $nombre = [string]((Leer-Cuerpo $req) | ConvertFrom-Json).nombre
+            if ($nombre -notmatch '^configuracion-\d{8}-\d{6}\.json$') { Responder $ctx 400 (Json @{ errores = @('Copia no valida') }); return }
+            $ruta = Join-Path $copiasDir $nombre
+            if (-not (Test-Path -LiteralPath $ruta)) { Responder $ctx 404 (Json @{ errores = @('No existe esa copia') }); return }
+            $txt = [IO.File]::ReadAllText($ruta, [Text.Encoding]::UTF8)
+            try { $cfg = $txt | ConvertFrom-Json } catch { Responder $ctx 400 (Json @{ errores = @('La copia no es un JSON valido') }); return }
+            $conv = Convertir-Config $cfg
+            if ($conv.errores.Count -gt 0) { Responder $ctx 400 (Json @{ errores = @($conv.errores) }); return }
+            try { Guardar-Copia $txt } catch { }
+            [IO.File]::WriteAllText($cfgFile, $txt, $utf8SinBom)
+            Aplicar-Config $conv
+            Cargar-OcrSiHaceFalta $txt
+            Log "Configuracion restaurada desde la copia $nombre"
             Responder $ctx 200 (Json @{ ok = $true })
         }
         'POST /api/listas/probar' {

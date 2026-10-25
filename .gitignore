@@ -1,5 +1,7 @@
 # Configuracion personal: la crea la pagina al guardar (sin ella, la app arranca con valores por defecto)
 configuracion.json
+# Copias de la configuracion (las guarda la app al guardar)
+copias/
 # Formato antiguo de configuracion: si existiera, la app lo convertiria en la configuracion de quien la descargue
 atajos.json
 
