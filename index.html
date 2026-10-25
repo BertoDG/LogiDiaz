@@ -11,6 +11,7 @@
     --line: #dde2e8; --accent: #2f6fdf; --accent-text: #ffffff; --accent-soft: #e6eefc;
     --ok: #1d9a5b; --ok-soft: #dff3e8; --warn: #a15c00; --err: #b3261e; --code: #eef1f5;
     --key-edge: #c9d0d9;
+    --flechaSelect: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 8'%3E%3Cpath d='M1 1.5l5 5 5-5' fill='none' stroke='%235f6b7a' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
   }
   /* Tema oscuro: automatico (segun Windows) salvo que se fuerce claro, o forzado con el conmutador */
   @media (prefers-color-scheme: dark) {
@@ -19,6 +20,7 @@
       --line: #2e3540; --accent: #6b9cff; --accent-text: #0e1420; --accent-soft: #23314d;
       --ok: #4fd18f; --ok-soft: #1f3a2d; --warn: #f0b45a; --err: #ff8a80; --code: #252a33;
       --key-edge: #3a4250;
+      --flechaSelect: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 8'%3E%3Cpath d='M1 1.5l5 5 5-5' fill='none' stroke='%239aa4b2' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
     }
   }
   :root[data-theme="dark"] {
@@ -26,6 +28,7 @@
     --line: #2e3540; --accent: #6b9cff; --accent-text: #0e1420; --accent-soft: #23314d;
     --ok: #4fd18f; --ok-soft: #1f3a2d; --warn: #f0b45a; --err: #ff8a80; --code: #252a33;
     --key-edge: #3a4250;
+    --flechaSelect: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 8'%3E%3Cpath d='M1 1.5l5 5 5-5' fill='none' stroke='%239aa4b2' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
   }
   * { box-sizing: border-box; }
   body { margin: 0; background: var(--bg); color: var(--text); font: 14px/1.45 "Segoe UI", system-ui, sans-serif; }
@@ -117,6 +120,10 @@
   /* Formato de una acción de lista: Lista / Rejilla + «Personalizar estética» con las mismas filas que la pestaña Listas */
   .formatoAccion { display: inline-flex; align-items: center; gap: 8px; flex-wrap: wrap; }
   .opcEstilo td:first-child { width: 230px; }
+  /* Listas y Rejillas (Apariencia): opciones a la izquierda y el ejemplo a la derecha */
+  .conEjemplo { display: grid; grid-template-columns: minmax(0, 560px) minmax(0, 1fr); gap: 12px 24px; align-items: stretch; }
+  .conEjemplo .muestraFondo { margin-top: 0; align-items: center; }
+  @media (max-width: 1000px) { .conEjemplo { grid-template-columns: minmax(0, 1fr); } .conEjemplo .muestraFondo { margin-top: 4px; } }
   .panelAspecto .opcEstilo { width: auto; }
   .btnAspecto { font-size: 13px; }
   .btnAspecto.propio { border-color: var(--accent); color: var(--accent); }
@@ -134,8 +141,26 @@
   .vista-panel .listaBotones { display: flex; flex-direction: column; gap: 2px; padding-right: 14px; border-right: 1px solid var(--line);
                                position: sticky; top: 8px; }
   /* En la lista: nombre arriba y resumen debajo (el código hexadecimal ya sale en el título del editor) */
-  .vista-panel .cabBoton { display: grid; grid-template-columns: 10px minmax(0, 1fr); gap: 1px 10px; }
+  .vista-panel .cabBoton { display: grid; grid-template-columns: 28px minmax(0, 1fr); gap: 1px 10px; align-items: center; position: relative; }
+  .vista-panel .cabBoton .dot { position: absolute; right: 10px; top: 50%; margin-top: -5px; }
+  .vista-panel .nomBoton { padding-right: 16px; }
   .vista-panel .cabBoton .hex { display: none; }
+  /* Icono pequeño con el color de su familia (como en las fichas) en lista y panel y en acordeón */
+  .vista-panel .icoFicha, .vista-acordeon .icoFicha {
+    display: inline-grid; place-items: center; flex: none; width: 28px; height: 28px; border-radius: 8px;
+    font: 14px "Segoe Fluent Icons", "Segoe MDL2 Assets"; color: hsl(var(--tono)); background: hsl(var(--tono) / .15); }
+  .vista-panel .icoFicha { grid-row: 1 / 3; }
+  .vista-acordeon .flecha { order: -1; }
+  /* En las listas, lo configurado se ve como en las fichas: fila tintada de su color, resumen con ✓ e icono más intenso;
+     lo que está por defecto, atenuado; la abierta, con una franja de su color a la izquierda */
+  .vista-panel .itemBoton:not(.conAccion) .resBoton, .vista-acordeon .itemBoton:not(.conAccion) .resBoton { opacity: .7; }
+  .vista-panel .itemBoton.conAccion > .cabBoton, .vista-acordeon .itemBoton.conAccion > .cabBoton { background: hsl(var(--tono) / .11); }
+  .vista-panel .itemBoton.conAccion .resBoton, .vista-acordeon .itemBoton.conAccion .resBoton { color: hsl(var(--tono)); font-weight: 600; }
+  .vista-panel .itemBoton.conAccion .resBoton::before, .vista-acordeon .itemBoton.conAccion .resBoton::before { content: "\2713\00a0"; }
+  .vista-panel .itemBoton.conAccion .icoFicha, .vista-acordeon .itemBoton.conAccion .icoFicha { background: hsl(var(--tono) / .3); }
+  .vista-panel .itemBoton.abierto > .cabBoton { background: hsl(var(--tono) / .2); box-shadow: inset 3px 0 0 hsl(var(--tono)); }
+  .vista-acordeon .itemBoton.abierto > .cabBoton { box-shadow: inset 3px 0 0 hsl(var(--tono)); }
+  .vista-panel .itemBoton.pulsado > .cabBoton, .vista-acordeon .itemBoton.pulsado > .cabBoton { background: var(--ok-soft); }
   .vista-panel .resBoton { grid-column: 2; margin-left: 0; font-size: 12.5px; }
   .vista-panel .itemBoton.abierto > .cabBoton { background: var(--accent-soft); }
   .vista-panel .tituloEditor { display: block; }
@@ -143,17 +168,37 @@
     .vista-panel { grid-template-columns: minmax(0, 1fr); }
     .vista-panel .listaBotones { border-right: 0; padding-right: 0; position: static; }
   }
-  /* Fichas: rejilla de tarjetas; el editor de la elegida va debajo, en un panel aparte */
-  .vista-fichas .listaBotones { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 10px; }
-  .vista-fichas .itemBoton { border: 1px solid var(--line); border-radius: 10px; background: var(--bg); min-width: 0; }
-  .vista-fichas .itemBoton.conAccion { border-left: 3px solid var(--accent); }
-  .vista-fichas .itemBoton.abierto { border-color: var(--accent); background: var(--accent-soft); }
-  .vista-fichas .cabBoton { flex-direction: column; align-items: flex-start; gap: 3px; padding: 12px 14px; position: relative; }
-  .vista-fichas .cabBoton .dot { position: absolute; top: 14px; right: 14px; }
+  /* Fichas: rejilla de tarjetas con icono; el editor de la elegida va debajo, en un panel aparte.
+     Cada ficha tiene su color (--tono, en HSL) según su familia; en la vista de un color (.vista-mono) todas usan el mismo. */
+  .t-luz { --tono: 38 92% 52%; } .t-voz { --tono: 4 80% 60%; } .t-media { --tono: 330 80% 60%; }
+  .t-sonido { --tono: 172 70% 42%; } .t-sistema { --tono: 217 90% 60%; } .t-raton { --tono: 262 75% 64%; }
+  .vista-mono .itemBoton, .vista-mono .panelBoton { --tono: 219 80% 60%; }
+  .icoFicha { display: none; }
+  .vista-fichas .listaBotones { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 10px; }
+  .vista-fichas .itemBoton { border: 0; border-radius: 14px; background: var(--code); min-width: 0; position: relative;
+                             transition: transform .12s, box-shadow .12s, background .12s; }
+  .vista-fichas .itemBoton:hover { transform: translateY(-1px); box-shadow: 0 2px 6px rgba(0,0,0,.18); }
+  .vista-fichas .cabBoton { display: grid; grid-template-columns: 38px minmax(0, 1fr); grid-template-rows: auto auto; gap: 2px 12px;
+                            align-items: center; padding: 12px 14px; border-radius: 14px; position: relative; }
+  .vista-fichas .cabBoton:hover { background: transparent; }
+  .vista-fichas .icoFicha { display: grid; place-items: center; grid-row: 1 / 3; width: 38px; height: 38px; border-radius: 11px;
+                            font: 18px "Segoe Fluent Icons", "Segoe MDL2 Assets"; color: hsl(var(--tono)); background: hsl(var(--tono) / .16); }
   .vista-fichas .nomBoton { padding-right: 18px; }
   .vista-fichas .cabBoton .hex { display: none; }
-  .vista-fichas .resBoton { margin-left: 0; max-width: 100%; }
-  .vista-fichas .panelBoton { margin-top: 12px; padding: 14px 16px; border: 1px solid var(--line); border-radius: 10px; background: var(--bg); }
+  .vista-fichas .resBoton { grid-column: 2; margin: 0; max-width: 100%; font-size: 12.5px; }
+  /* El punto de «pulsado ahora» solo se ve encendido */
+  .vista-fichas .cabBoton .dot { position: absolute; top: 12px; right: 12px; width: 8px; height: 8px; background: transparent; }
+  .vista-fichas .cabBoton .dot.on { background: var(--ok); box-shadow: 0 0 0 4px var(--ok-soft); }
+  .vista-fichas .itemBoton:not(.conAccion) .resBoton { opacity: .7; }
+  .vista-fichas .itemBoton.conAccion { background: hsl(var(--tono) / .13); }
+  .vista-fichas .itemBoton.conAccion .resBoton { color: hsl(var(--tono)); font-weight: 600; }
+  .vista-fichas .itemBoton.conAccion .resBoton::before { content: "\2713\00a0"; }
+  .vista-fichas .itemBoton.abierto { background: linear-gradient(135deg, hsl(var(--tono)), hsl(var(--tono) / .72)); box-shadow: 0 2px 6px hsl(var(--tono) / .35); }
+  .vista-fichas .itemBoton.abierto .nomBoton, .vista-fichas .itemBoton.abierto .resBoton { color: #fff; opacity: 1; }
+  .vista-fichas .itemBoton.abierto .icoFicha { color: #fff; background: rgba(255, 255, 255, .22); }
+  .vista-fichas .itemBoton.pulsado > .cabBoton { background: transparent; box-shadow: inset 0 0 0 2px var(--ok); }
+  .vista-fichas .panelBoton { margin-top: 12px; padding: 14px 16px; border: 0; border-radius: 14px; background: var(--code);
+                              box-shadow: inset 4px 0 0 hsl(var(--tono, 219 80% 60%)); }
   .vista-fichas .panelBoton:not(:has(.editorBoton:not([hidden]))) { display: none; }   /* ninguna ficha elegida */
   .vista-fichas .tituloEditor { display: block; }
   /* Acordeón: filas plegadas; la abierta despliega su editor debajo */
@@ -379,7 +424,82 @@
   .resBuscar .rTit { font-weight: 600; }
   .resBuscar .rDet { font-size: 12.5px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .resaltado { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 6px; }
-  input[type=range].apagado { opacity: .45; }
+  /* ---- Filas de ajuste: la tabla se ajusta al contenido (el control queda junto a su etiqueta, no en el borde) ---- */
+  .card table:not(.opcEstilo) { width: auto; max-width: 100%; }
+  .card table:not(.opcEstilo) td:first-child { padding-right: 28px; min-width: 190px; }
+  .card table th { padding-right: 28px; }
+  td:has(> input[type=range]) { white-space: nowrap; }                /* el valor (100 %, 10 pt…) junto a su barra */
+  .filaColor { flex-wrap: nowrap; }
+  .card .grid2 { gap: 6px 32px; }
+  .card .grid2 > table { justify-self: start; }                       /* en la rejilla, la tabla tampoco se estira */
+  .card h3 { font-size: 13.5px; margin: 6px 0 4px; }
+  input[type=range].ancho { width: 260px; max-width: 45vw; }
+  #dFijar[hidden] { display: none; }
+  /* Puntero: ajuste de la distancia a la izquierda y la zona de prueba a la derecha */
+  .gestosPrueba { display: grid; grid-template-columns: minmax(0, 760px) minmax(260px, 380px); justify-content: start;
+                  gap: 12px 40px; align-items: start; }
+  @media (max-width: 900px) { .gestosPrueba { grid-template-columns: minmax(0, 1fr); } }
+  /* «Ahora en el dispositivo»: etiqueta y fichas */
+  .estadoAhora { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 10px; font-size: 12.5px; color: var(--muted); }
+  .estadoAhora:empty { display: none; }
+  .chipAhora { padding: 2px 10px; border-radius: 999px; background: var(--code); border: 1px solid var(--line); color: var(--text); white-space: nowrap; }
+  /* Ayudas plegables: el botón «i» del título las muestra */
+  .card:not(.verAyuda) .ayuda { display: none; }
+  .btnAyuda { width: 20px; height: 20px; padding: 0; margin-left: 8px; border-radius: 50%; vertical-align: 1px; font: italic 700 12px/1 Georgia, serif;
+              color: var(--muted); background: transparent; border: 1.5px solid var(--line); }
+  .btnAyuda:hover, .btnAyuda.sel { color: var(--accent-text); background: var(--accent); border-color: var(--accent); }
+  /* Perfiles por aplicación: pastillas */
+  .pastillas { display: flex; flex-wrap: wrap; gap: 6px; }
+  .pastilla { border-radius: 999px; padding: 4px 13px; font-size: 13px; font-weight: 600; background: var(--code); border: 1px solid transparent; color: var(--text); }
+  .pastilla:hover { border-color: var(--line); }
+  .pastilla.sel { background: var(--accent); color: var(--accent-text); }
+  .pastilla.mas { background: transparent; border: 1px dashed var(--line); color: var(--muted); font-weight: 500; }
+  .pastilla.mas:hover { color: var(--text); border-color: var(--accent); }
+
+  /* ---- Controles con el estilo de la app (en vez de los del navegador) ---- */
+  /* Desplegables: flecha propia */
+  select { appearance: none; -webkit-appearance: none; padding-right: 30px; cursor: pointer;
+           background: var(--card) var(--flechaSelect) no-repeat right 11px center / 11px 8px; }
+  select:hover, input[type=text]:hover, input[type=number]:hover, input[type=search]:hover { border-color: color-mix(in srgb, var(--line) 50%, var(--muted)); }
+  select:focus-visible, input[type=text]:focus, input[type=number]:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+  /* Barras deslizantes: pista fina y tirador redondo del color de acento */
+  input[type=range] { -webkit-appearance: none; appearance: none; background: transparent; height: 20px; vertical-align: middle; cursor: pointer; }
+  input[type=range]::-webkit-slider-runnable-track { height: 6px; border-radius: 99px; background: var(--line); }
+  input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; width: 16px; height: 16px; margin-top: -5px; border-radius: 50%;
+    background: var(--accent); border: 3px solid var(--card); box-shadow: 0 0 0 1px var(--accent); transition: transform .1s; }
+  input[type=range]:hover::-webkit-slider-thumb { transform: scale(1.12); }
+  input[type=range]:focus-visible { outline: none; }
+  input[type=range]:focus-visible::-webkit-slider-thumb { box-shadow: 0 0 0 1px var(--accent), 0 0 0 5px var(--accent-soft); }
+  /* Campos numéricos sin las flechitas del navegador (las flechas del teclado siguen funcionando) */
+  input[type=number] { -moz-appearance: textfield; appearance: textfield; }
+  input[type=number]::-webkit-inner-spin-button, input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+  /* Barras de desplazamiento finas y del color de la página */
+  * { scrollbar-width: thin; scrollbar-color: var(--line) transparent; }
+  /* Segmentados pequeños: pastilla con fondo suave; las opciones elegidas, cada una en su píldora de color */
+  .seg.peq { border: 0; background: var(--code); border-radius: 9px; padding: 2px; gap: 2px; overflow: visible; }
+  .seg.peq button { border: 0; border-radius: 7px; background: transparent; color: var(--muted); font-weight: 500; }
+  .seg.peq button + button { border-left: 0; }
+  .seg.peq button:hover { color: var(--text); background: color-mix(in srgb, var(--code) 60%, var(--line)); }
+  .seg.peq button.sel { background: var(--accent); color: var(--accent-text); font-weight: 600; box-shadow: 0 1px 2px rgba(0,0,0,.2); }
+  /* Selector de color: muestras redondas; la elegida con anillo; «otro color» redondo con un + */
+  .filaColor { gap: 8px; }
+  .muestraColor.sel { box-shadow: 0 0 0 2px var(--card), 0 0 0 4px var(--text); }
+  .otroColor { position: relative; display: inline-flex; width: 22px; height: 22px; cursor: pointer; }
+  .otroColor input[type=color] { width: 22px; height: 22px; padding: 0; border: 0; border-radius: 50%; background: none; cursor: pointer;
+                                  box-shadow: 0 0 0 1px var(--line); overflow: hidden; }
+  .otroColor input[type=color]::-webkit-color-swatch-wrapper { padding: 0; }
+  .otroColor input[type=color]::-webkit-color-swatch { border: 0; border-radius: 50%; }
+  .otroColor::after { content: "+"; position: absolute; right: -5px; bottom: -5px; width: 14px; height: 14px; border-radius: 50%;
+                      background: var(--card); color: var(--text); font: 700 12px/14px "Segoe UI", sans-serif; text-align: center;
+                      box-shadow: 0 0 0 1px var(--line); pointer-events: none; }
+  /* Estados vacíos: un mensaje corto en lugar de un hueco */
+  .vacio { display: flex; align-items: center; gap: 12px; padding: 14px 16px; margin: 4px 0 10px; border: 1px dashed var(--line);
+           border-radius: 12px; color: var(--muted); font-size: 13px; }
+  .vacio .glifoVacio { font: 20px "Segoe Fluent Icons", "Segoe MDL2 Assets"; color: var(--accent); }
+  #eventos:empty::before { content: "Pulsa un botón del ratón o una tecla del teclado y aparecerá aquí."; color: var(--muted);
+                           font-family: "Segoe UI", system-ui, sans-serif; font-size: 13px; }
+  /* El código interno (0x00C3) no se muestra: está en el texto que sale al pasar el ratón */
+  .tituloEditor .hex, .vista-acordeon .cabBoton .hex { display: none; }
 </style>
 </head>
 <body>
@@ -455,9 +575,9 @@
   <div class="tabsPanel tabs3" id="tabsConfig">
     <button data-tab="teclado" id="tabTeclado" class="sel">Teclado</button>
     <button data-tab="raton" id="tabRaton">Ratón</button>
-    <button data-tab="listas">Listas/Rejillas</button>
+    <button data-tab="listas">Apariencia</button>
+    <button data-tab="ajustes">Ajustes</button>
     <button data-tab="actividad">Actividad</button>
-    <button data-tab="registro">Registro</button>
     <div class="buscador">
       <input type="search" id="buscar" placeholder="Buscar botón, tecla o acción (Ctrl+F)" autocomplete="off" spellcheck="false">
       <div class="resBuscar" id="resBuscar" hidden></div>
@@ -473,19 +593,21 @@
         <div class="row" id="perfiles-teclado"></div>
         <button class="iconBtn vistaBotones"></button>
       </div>
-      <p class="note" id="perfilAyuda-teclado" style="margin:0 0 8px"></p>
+      <p class="note" id="perfilAyuda-teclado" hidden></p>
       <div class="botones" id="tbBotones-teclado"></div>
       <p class="note">Si una tecla tiene acción en algún perfil, en las aplicaciones donde no tenga acción no hará nada: el servidor no sabe imitar su función especial.</p>
+    </div>
+    <div class="card" id="cardCombos">
       <div id="zonaCombos"></div>
     </div>
     <div class="card" id="cardLuz">
       <h2>Iluminación</h2>
-      <div class="grid2" style="gap:6px 24px">
+      <div class="grid2">
         <table><tbody>
-          <tr><td>Retroiluminación</td><td><select id="lActiva">
+          <tr><td>Retroiluminación</td><td><select id="lActiva" data-seg>
             <option value="">No tocar</option><option value="si">Encendida</option><option value="no">Apagada</option></select></td></tr>
-          <tr><td>Modo</td><td><select id="lModo">
-            <option value="">No tocar</option><option value="automatico">Automático (según la luz)</option><option value="manual">Manual</option></select></td></tr>
+          <tr><td>Modo</td><td><select id="lModo" data-seg>
+            <option value="">No tocar</option><option value="automatico">Automático</option><option value="manual">Manual</option></select></td></tr>
           <tr id="filaNivel"><td>Brillo</td>
             <td><input type="range" id="lNivel" min="1" max="8" value="4"> <span id="lNivelVal">4</span></td></tr>
         </tbody></table>
@@ -498,35 +620,19 @@
             <td><input type="number" id="lCorriente" min="5" max="3600" step="5" style="width:80px"></td></tr>
         </tbody></table>
       </div>
-      <p class="note">Se aplica al guardar y cada vez que se conecta el teclado (en modo Activo). Las teclas de brillo
-        del teclado (F3 / F4) siguen funcionando: el servidor no deshace lo que cambies con ellas.</p>
-      <p class="note" id="luzActual"></p>
+      <div class="estadoAhora" id="luzActual"></div>
+      <p class="note ayuda">Se aplica al guardar y cada vez que se conecta el teclado (en modo Activo). Las teclas de brillo
+        del teclado (F3 / F4) siguen funcionando: el servidor no deshace lo que cambies con ellas. «Automático» ajusta el
+        brillo según la luz de la habitación. Los tiempos vacíos dejan los del teclado.</p>
     </div>
     <div class="card" id="cardBateria-teclado">
       <h2>Batería</h2>
       <div class="opciones">
-        <label class="interruptor"><input type="checkbox" id="chkBandejaTeclado"> Icono en la bandeja del sistema
-          <span class="note" style="margin:0">(se rellena según la batería y lleva un rayo al cargar; se aplica al momento)</span></label>
-        <label class="interruptor"><input type="checkbox" id="chkAvisoBat-teclado"> Avisar con la batería baja
-          <span class="note" style="margin:0">(notificación de Windows al bajar del 15 % y del 5 %; se aplica al guardar)</span></label>
+        <label class="interruptor"><input type="checkbox" id="chkBandejaTeclado"> Icono en la bandeja del sistema</label>
+        <label class="interruptor"><input type="checkbox" id="chkAvisoBat-teclado"> Avisar con la batería baja</label>
       </div>
-      <p class="note" id="batInfo-teclado"></p>
-    </div>
-    <div class="card" id="cardEmparejamiento-teclado">
-      <h2>Emparejamiento (Easy-Switch)</h2>
-      <p class="note" id="equipoInfo-teclado" style="margin:0 0 10px"></p>
-      <div class="opciones">
-        <label class="interruptor"><input type="checkbox" class="chkSeguir"> Seguir al otro dispositivo
-          <span class="note" style="margin:0">(si cambias el ratón de equipo con su botón, el teclado se va con él, y al revés)</span></label>
-        <label class="interruptor"><input type="checkbox" class="chkEasySwitch"> Acción «Cambiar de equipo»
-          <span class="note" style="margin:0">(para cambiar los dos a la vez desde un botón, una tecla o un gesto)</span></label>
-      </div>
-      <table style="margin-top:8px"><tbody>
-        <tr><td>Canal del otro equipo en este teclado <span class="note">(adonde va al seguir al ratón)</span></td>
-          <td><select id="canalOtro-teclado"><option value="siguiente">El siguiente</option><option value="1">Canal 1</option>
-            <option value="2">Canal 2</option><option value="3">Canal 3</option></select></td></tr>
-      </tbody></table>
-      <p class="note">Los dos ajustes de arriba son comunes a teclado y ratón (también están en la otra pestaña).</p>
+      <p class="note ayuda">El icono de la bandeja se rellena según la batería y lleva un rayo mientras carga; se activa o se quita al momento.
+        El aviso es una notificación de Windows al bajar del 15 % y otra al bajar del 5 % (sin cargar); se aplica al guardar.</p>
     </div>
   </div>
 
@@ -536,90 +642,61 @@
         <div class="row" id="perfiles-raton"></div>
         <button class="iconBtn vistaBotones"></button>
       </div>
-      <p class="note" id="perfilAyuda-raton" style="margin:0 0 8px"></p>
+      <p class="note" id="perfilAyuda-raton" hidden></p>
       <div class="botones" id="tbBotones-raton"></div>
       <p class="note">"Actuar como" en el perfil General lo hace el propio ratón; un atajo, un gesto o un perfil de aplicación los gestiona el servidor, que tiene que estar en marcha. Los atajos no llegan a ventanas abiertas como administrador.</p>
     </div>
-    <div class="card" id="cardGestos">
-      <h2>Gestos</h2>
-      <div class="grid2" style="gap:6px 24px; align-items:start">
+    <div class="card" id="cardPuntero">
+      <h2>Puntero</h2>
+      <h3>Velocidad</h3>
+      <table><tbody>
+        <tr><td>Velocidad al conectar</td>
+          <td><div class="row"><select id="dModo" data-seg><option value="">No tocar</option><option value="fijar">Fijar</option></select>
+            <span class="row" id="dFijar"><input type="range" id="dRango" min="200" max="8000" step="50" value="1000" class="ancho">
+              <input type="number" id="dValor" min="200" max="8000" step="50" style="width:90px"> <span class="note" style="margin:0">ppp</span></span></div></td></tr>
+      </tbody></table>
+      <div class="estadoAhora" id="dpiActual"></div>
+      <p class="note ayuda">Es la sensibilidad del sensor del ratón (más ppp = el puntero recorre más con el mismo movimiento). Se aplica
+        al guardar y cada vez que se conecta el ratón (en modo Activo). Para cambiarla con un botón, una tecla o un gesto, usa la
+        acción <b>Velocidad del puntero</b>: fijar un valor, ir pasando por varios o <b>precisión mientras se mantiene</b>.</p>
+      <h3 style="margin-top:18px">Gestos</h3>
+      <div class="gestosPrueba">
         <div>
           <table><tbody>
             <tr><td>Distancia mínima para que cuente como gesto <span class="note">(menos = más sensible)</span></td>
               <td class="filaDistancia"><input type="range" id="gDistancia" min="0" max="1000" step="1">
                 <span id="gDistanciaVal" class="valorFijo"></span></td></tr>
           </tbody></table>
-          <p class="note">Lo que hay que mover el ratón manteniendo el botón para que se lance un gesto (también el gesto rápido de
-            Recolocar ventana). Si se mueve menos, cuenta como pulsación. Los milímetros son aproximados: dependen de la
-            sensibilidad del ratón (1000 ppp, la de fábrica del MX Master 3S).</p>
+          <p class="note">Prueba la distancia en el recuadro: mantén pulsado el botón izquierdo dentro y mueve el ratón.</p>
+          <p class="note ayuda">Lo que hay que mover el ratón manteniendo el botón para que se lance un gesto (también el gesto rápido de
+            Recolocar ventana). Si se mueve menos, cuenta como pulsación. Se mide en cuentas del sensor, así que depende de la
+            velocidad de arriba: los milímetros son aproximados para 1000 ppp (la de fábrica del MX Master 3S).</p>
         </div>
         <div>
           <div class="pruebaGesto" id="gPrueba" title="Mantén pulsado el botón izquierdo y mueve el ratón">
             <canvas id="gLienzo"></canvas>
-            <div class="gResultado" id="gResultado">Mantén pulsado aquí el botón izquierdo y mueve el ratón hasta salir del cuadrado (tamaño real)</div>
+            <div class="gResultado" id="gResultado">Mantén pulsado aquí y sal del cuadrado</div>
           </div>
           <p class="note" id="gNoCabe" hidden>El cuadrado es más grande que la zona: se ve recortado.</p>
         </div>
       </div>
     </div>
-    <div class="card" id="cardDpi">
-      <h2>Velocidad del puntero</h2>
-      <table><tbody>
-        <tr><td>Velocidad al conectar <span class="note">(ppp; vacío = no tocar)</span></td>
-          <td class="filaDistancia"><input type="range" id="dRango" min="200" max="8000" step="50" value="1000">
-            <input type="number" id="dValor" min="200" max="8000" step="50" placeholder="No tocar" style="width:100px">
-            <button type="button" id="dQuitar" title="No cambiar la velocidad del ratón">No tocar</button></td></tr>
-      </tbody></table>
-      <p class="note">Es la sensibilidad del sensor del ratón (más ppp = el puntero recorre más con el mismo movimiento). Se aplica
-        al guardar y cada vez que se conecta el ratón (en modo Activo). Para cambiarla con un botón, una tecla o un gesto, usa la
-        acción <b>Velocidad del puntero</b>: fijar un valor, ir pasando por varios o <b>precisión mientras se mantiene</b>.
-        La distancia de los gestos se mide en cuentas del sensor: con otra velocidad, revísala en Gestos.</p>
-      <p class="note" id="dpiActual"></p>
-    </div>
-    <div class="card" id="cardBateria-raton">
-      <h2>Batería</h2>
-      <div class="opciones">
-        <label class="interruptor"><input type="checkbox" id="chkBandejaRaton"> Icono en la bandeja del sistema
-          <span class="note" style="margin:0">(se rellena según la batería y lleva un rayo al cargar; se aplica al momento)</span></label>
-        <label class="interruptor"><input type="checkbox" id="chkAvisoBat-raton"> Avisar con la batería baja
-          <span class="note" style="margin:0">(notificación de Windows al bajar del 15 % y del 5 %; se aplica al guardar)</span></label>
-      </div>
-      <p class="note" id="batInfo-raton"></p>
-    </div>
-    <div class="card" id="cardEmparejamiento-raton">
-      <h2>Emparejamiento (Easy-Switch)</h2>
-      <p class="note" id="equipoInfo-raton" style="margin:0 0 10px"></p>
-      <div class="opciones">
-        <label class="interruptor"><input type="checkbox" class="chkSeguir"> Seguir al otro dispositivo
-          <span class="note" style="margin:0">(si cambias el teclado de equipo con su tecla, el ratón se va con él, y al revés)</span></label>
-        <label class="interruptor"><input type="checkbox" class="chkEasySwitch"> Acción «Cambiar de equipo»
-          <span class="note" style="margin:0">(para cambiar los dos a la vez desde un botón, una tecla o un gesto)</span></label>
-      </div>
-      <table style="margin-top:8px"><tbody>
-        <tr><td>Canal del otro equipo en este ratón <span class="note">(adonde va al seguir al teclado)</span></td>
-          <td><select id="canalOtro-raton"><option value="siguiente">El siguiente</option><option value="1">Canal 1</option>
-            <option value="2">Canal 2</option><option value="3">Canal 3</option></select></td></tr>
-      </tbody></table>
-      <p class="note">Al seguir, la app no puede saber a qué canal se ha ido el otro: va al que elijas aquí. Con dos equipos, elige el
-        canal del otro equipo. Para que al volver también se vengan los dos, la app tiene que estar en el otro equipo con esta opción
-        activada. Si apagas uno con su interruptor, el otro también se irá (para la app es lo mismo que cambiarlo de equipo).</p>
-    </div>
     <div class="card" id="cardRuedas">
       <h2>Ruedas</h2>
-      <div class="grid2" style="gap:6px 24px">
+      <div class="grid2">
         <div>
           <h3>Rueda principal <span class="note">(vertical)</span></h3>
           <table><tbody>
-            <tr><td>Modo al arrancar</td><td><select id="rModo">
+            <tr><td>Modo al arrancar</td><td><select id="rModo" data-seg>
               <option value="">No tocar</option><option value="tope">Con tope</option><option value="libre">Giro libre</option></select></td></tr>
-            <tr><td>SmartShift <span class="note">(pasa a giro libre al girar rápido)</span></td><td><select id="rSmart">
-              <option value="">No tocar</option><option value="si">Activado</option><option value="no">Desactivado</option></select></td></tr>
+            <tr><td>SmartShift <span class="note">(giro libre al girar rápido)</span></td><td><select id="rSmart" data-seg>
+              <option value="">No tocar</option><option value="si">Sí</option><option value="no">No</option></select></td></tr>
             <tr id="filaUmbral"><td>Umbral SmartShift <span class="note">(bajo = basta un giro suave)</span></td>
               <td><input type="range" id="rUmbral" min="1" max="50" value="10"> <span id="rUmbralVal">10</span></td></tr>
-            <tr><td>Dirección</td><td><select id="rInv">
-              <option value="">No tocar</option><option value="no">Normal</option><option value="si">Invertida (natural)</option></select></td></tr>
-            <tr><td>Alta resolución <span class="note">(desplazamiento más suave)</span></td><td><select id="rHires">
-              <option value="">No tocar</option><option value="si">Activada</option><option value="no">Desactivada</option></select></td></tr>
+            <tr><td>Dirección</td><td><select id="rInv" data-seg>
+              <option value="">No tocar</option><option value="no">Normal</option><option value="si">Natural</option></select></td></tr>
+            <tr><td>Alta resolución <span class="note">(más suave)</span></td><td><select id="rHires" data-seg>
+              <option value="">No tocar</option><option value="si">Sí</option><option value="no">No</option></select></td></tr>
             <tr><td>Líneas por paso <span class="note">(Windows)</span></td>
               <td><input type="number" id="rLineas" min="1" max="100" placeholder="3" style="width:70px"></td></tr>
           </tbody></table>
@@ -627,23 +704,25 @@
         <div>
           <h3>Rueda del pulgar <span class="note">(horizontal)</span></h3>
           <table><tbody>
-            <tr><td>Dirección</td><td><select id="rInvLat">
+            <tr><td>Dirección</td><td><select id="rInvLat" data-seg>
               <option value="">No tocar</option><option value="no">Normal</option><option value="si">Invertida</option></select></td></tr>
             <tr><td>Caracteres por paso <span class="note">(Windows)</span></td>
               <td><input type="number" id="rChars" min="1" max="100" placeholder="3" style="width:70px"></td></tr>
           </tbody></table>
         </div>
       </div>
-      <p class="note" id="ruedaActual"></p>
+      <div class="estadoAhora" id="ruedaActual"></div>
+      <p class="note ayuda">«Natural» invierte el sentido, como en un panel táctil. SmartShift pasa la rueda a giro libre al girarla rápido
+        y vuelve al tope al frenar. Líneas y caracteres por paso son ajustes de Windows para todos los ratones.</p>
     </div>
-    <div class="card" id="cardPortapapeles">
-      <h2>Portapapeles</h2>
-      <table><tbody>
-        <tr><td>Espera antes de devolver el portapapeles <span class="note">(ms, 300–5000)</span></td>
-          <td><input type="number" id="ppEspera" min="300" max="5000" step="100" placeholder="1000" style="width:80px"></td></tr>
-      </tbody></table>
-      <p class="note">Al pegar texto o transformar la selección se usa el portapapeles y después se devuelve lo que había
-        (texto, imagen, ficheros…). Si una aplicación lenta (p. ej. Oracle Forms) pega lo anterior en vez de lo nuevo, sube este valor.</p>
+    <div class="card" id="cardBateria-raton">
+      <h2>Batería</h2>
+      <div class="opciones">
+        <label class="interruptor"><input type="checkbox" id="chkBandejaRaton"> Icono en la bandeja del sistema</label>
+        <label class="interruptor"><input type="checkbox" id="chkAvisoBat-raton"> Avisar con la batería baja</label>
+      </div>
+      <p class="note ayuda">El icono de la bandeja se rellena según la batería y lleva un rayo mientras carga; se activa o se quita al momento.
+        El aviso es una notificación de Windows al bajar del 15 % y otra al bajar del 5 % (sin cargar); se aplica al guardar.</p>
     </div>
   </div>
 
@@ -651,66 +730,110 @@
     <div class="card">
       <h2>Aspecto general</h2>
       <p class="note" style="margin:0 0 10px">Cómo se ven las listas y rejillas que abren los botones y las teclas, la paleta de comandos y los avisos
-        junto al cursor. Cada lista puede tener su propio aspecto con su botón «Aspecto».</p>
-      <div class="grid2" style="gap:6px 24px">
+        junto al cursor. Cada lista puede tener su propio aspecto con su botón «Personalizar estética».</p>
+      <div class="grid2">
         <table><tbody>
-          <tr><td>Tema</td><td><select id="lsTema">
+          <tr><td>Tema</td><td><select id="lsTema" data-seg>
             <option value="oscuro">Oscuro</option><option value="claro">Claro</option><option value="sistema">Como Windows</option></select></td></tr>
-          <tr><td>Color de la selección</td><td class="filaColor"><input type="color" id="lsAcento" value="#2f6fdf">
+          <tr><td>Color de la selección</td><td class="filaColor">
             <button class="muestraColor" data-color="#2f6fdf" title="Azul" style="background:#2f6fdf"></button>
             <button class="muestraColor" data-color="#426bba" title="Azul Edisa" style="background:#426bba"></button>
             <button class="muestraColor" data-color="#1d9a5b" title="Verde" style="background:#1d9a5b"></button>
             <button class="muestraColor" data-color="#c2410c" title="Naranja" style="background:#c2410c"></button>
-            <button class="muestraColor" data-color="#7c3aed" title="Morado" style="background:#7c3aed"></button></td></tr>
-          <tr><td>Opacidad del fondo <span class="note">(en la paleta, de toda la ventana y mínimo 60 %)</span></td>
+            <button class="muestraColor" data-color="#7c3aed" title="Morado" style="background:#7c3aed"></button>
+            <label class="otroColor" title="Elegir otro color"><input type="color" id="lsAcento" value="#2f6fdf"></label></td></tr>
+          <tr><td>Opacidad del fondo</td>
             <td><input type="range" id="lsOpacidad" min="20" max="100" step="5" value="100"> <span id="lsOpacidadVal">100 %</span></td></tr>
           <tr><td>Esquinas redondeadas</td>
             <td><input type="range" id="lsRadio" min="0" max="20" value="0"> <span id="lsRadioVal">0 px</span></td></tr>
-          <tr><td>Difuminar lo que hay detrás <span class="note">(no en la paleta; las esquinas pasan a ser las de Windows 11: 4 u 8 px)</span></td><td><select id="lsDifuminado">
+          <tr><td>Difuminar lo que hay detrás</td><td><select id="lsDifuminado" data-seg>
             <option value="no">No</option><option value="suave">Suave</option><option value="intenso">Intenso</option></select></td></tr>
         </tbody></table>
         <table><tbody>
           <tr><td>Tamaño de letra</td>
             <td><input type="range" id="lsLetra" min="8" max="16" step="0.5" value="10"> <span id="lsLetraVal">10 pt</span></td></tr>
-          <tr><td>Espaciado</td><td><select id="lsEspaciado">
+          <tr><td>Espaciado</td><td><select id="lsEspaciado" data-seg>
             <option value="compacto">Compacto</option><option value="normal">Normal</option><option value="amplio">Amplio</option></select></td></tr>
-          <tr><td>Disposición por defecto <span class="note">(la paleta siempre es lista)</span></td><td id="lsDisposicion"></td></tr>
+          <tr><td>Disposición por defecto</td><td id="lsDisposicion"></td></tr>
         </tbody></table>
       </div>
       <div class="row" style="margin-top:10px; gap:8px">
         <button id="btnProbarPaleta">Probar paleta</button>
         <button id="btnListasDefecto">Valores por defecto</button>
       </div>
-      <p class="note">«Probar» abre un ejemplo con este aspecto aunque no lo hayas guardado (sus opciones no hacen nada).
-        Las vistas previas son aproximadas: la letra y el suavizado reales son los de Windows.</p>
+      <p class="note ayuda">En la paleta, la opacidad es la de toda la ventana y como mínimo del 60 %. El difuminado no se aplica a la
+        paleta y, con él, las esquinas pasan a ser las de Windows 11 (4 u 8 px). La paleta siempre se muestra como lista.
+        «Probar» abre un ejemplo con este aspecto aunque no lo hayas guardado (sus opciones no hacen nada). Las vistas previas
+        son aproximadas: la letra y el suavizado reales son los de Windows.</p>
     </div>
 
     <div class="card">
       <h2>Listas</h2>
       <!-- Mismas filas que en Rejillas y que en «Personalizar estética» de cada acción (opcionesEstilo) -->
-      <table class="opcEstilo"><tbody id="lsOpcLista"></tbody></table>
-      <div class="muestraFondo"><div class="muestraLista" id="muestraLista"></div></div>
-      <div class="row" style="margin-top:10px"><button id="btnProbarLista">Probar lista en pantalla</button></div>
+      <div class="conEjemplo">
+        <div>
+          <table class="opcEstilo"><tbody id="lsOpcLista"></tbody></table>
+          <div class="row" style="margin-top:10px"><button id="btnProbarLista">Probar lista en pantalla</button></div>
+        </div>
+        <div class="muestraFondo"><div class="muestraLista" id="muestraLista"></div></div>
+      </div>
     </div>
 
     <div class="card">
       <h2>Rejillas</h2>
-      <table class="opcEstilo"><tbody id="lsOpcRejilla"></tbody></table>
-      <div class="muestraFondo"><div class="muestraLista" id="muestraRejilla"></div></div>
-      <div class="row" style="margin-top:10px"><button id="btnProbarRejilla">Probar rejilla en pantalla</button></div>
+      <div class="conEjemplo">
+        <div>
+          <table class="opcEstilo"><tbody id="lsOpcRejilla"></tbody></table>
+          <div class="row" style="margin-top:10px"><button id="btnProbarRejilla">Probar rejilla en pantalla</button></div>
+        </div>
+        <div class="muestraFondo"><div class="muestraLista" id="muestraRejilla"></div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="pane hidden" id="paneAjustes">
+    <div class="card" id="cardEmparejamiento">
+      <h2>Emparejamiento (Easy-Switch)</h2>
+      <div class="opciones">
+        <label class="interruptor"><input type="checkbox" class="chkSeguir"> Seguir al otro dispositivo
+          <span class="note" style="margin:0">(si cambias uno de equipo con su botón, el otro se va con él)</span></label>
+        <label class="interruptor"><input type="checkbox" class="chkEasySwitch"> Acción «Cambiar de equipo»
+          <span class="note" style="margin:0">(cambiar los dos a la vez desde un botón, una tecla o un gesto)</span></label>
+      </div>
+      <table style="margin-top:12px">
+        <thead><tr><th></th><th>Teclado</th><th>Ratón</th></tr></thead>
+        <tbody>
+          <tr><td>Este equipo</td><td id="equipoInfo-teclado"></td><td id="equipoInfo-raton"></td></tr>
+          <tr><td>Canal del otro equipo <span class="note">(adonde va al seguir al otro)</span></td>
+            <td><select id="canalOtro-teclado" data-seg><option value="siguiente">Siguiente</option><option value="1">1</option>
+              <option value="2">2</option><option value="3">3</option></select></td>
+            <td><select id="canalOtro-raton" data-seg><option value="siguiente">Siguiente</option><option value="1">1</option>
+              <option value="2">2</option><option value="3">3</option></select></td></tr>
+        </tbody>
+      </table>
+      <p class="note ayuda">Al seguir, la app no puede saber a qué canal se ha ido el otro: va al que elijas aquí. Con dos equipos,
+        elige el canal del otro equipo. Para que al volver también se vengan los dos, la app tiene que estar en el otro equipo con
+        «Seguir» activado. Si apagas uno con su interruptor, el otro también se irá (para la app es lo mismo que cambiarlo de equipo).</p>
+    </div>
+    <div class="card" id="cardPortapapeles">
+      <h2>Portapapeles</h2>
+      <table><tbody>
+        <tr><td>Espera antes de devolver el portapapeles <span class="note">(ms, 300–5000)</span></td>
+          <td><input type="number" id="ppEspera" min="300" max="5000" step="100" placeholder="1000" style="width:80px"></td></tr>
+      </tbody></table>
+      <p class="note ayuda">Al pegar texto o transformar la selección se usa el portapapeles y después se devuelve lo que había
+        (texto, imagen, ficheros…). Si una aplicación lenta (p. ej. Oracle Forms) pega lo anterior en vez de lo nuevo, sube este valor.</p>
     </div>
   </div>
 
   <div class="pane hidden" id="paneActividad">
     <div class="card">
+      <div class="seg peq" id="vistaActividad" style="margin-bottom:10px">
+        <button type="button" data-v="eventos" class="sel">Eventos en directo</button><button type="button" data-v="log">Registro del servidor</button>
+      </div>
       <p class="note" id="modoAyuda" style="margin:0 0 8px"></p>
       <pre id="eventos"></pre>
-    </div>
-  </div>
-
-  <div class="pane hidden" id="paneRegistro">
-    <div class="card">
-      <pre id="log"></pre>
+      <pre id="log" hidden></pre>
     </div>
   </div>
   </div>
@@ -770,6 +893,46 @@ function atajoValido(s) {
 
 // ---------------------------------------------------------------- Estado de la página
 const $ = id => document.getElementById(id);
+
+// Desplegables con pocas opciones (data-seg) mostrados como botones segmentados. El <select> se queda (oculto) y sigue
+// siendo el que se lee y escucha: un clic cambia su valor y lanza input/change; poner .value desde el código repinta.
+function segmentarSelect(sel) {
+  const seg = document.createElement('div'); seg.className = 'seg peq';
+  const valor = Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, 'value');
+  const pintar = () => { for (const b of seg.children) b.classList.toggle('sel', b.dataset.v === valor.get.call(sel)); };
+  for (const o of sel.options) {
+    const b = document.createElement('button'); b.type = 'button'; b.dataset.v = o.value; b.textContent = o.textContent;
+    b.addEventListener('click', () => {
+      valor.set.call(sel, o.value); pintar();
+      sel.dispatchEvent(new Event('input', { bubbles: true })); sel.dispatchEvent(new Event('change', { bubbles: true }));
+    });
+    seg.appendChild(b);
+  }
+  Object.defineProperty(sel, 'value', { configurable: true, get: () => valor.get.call(sel), set: v => { valor.set.call(sel, v); pintar(); } });
+  sel.hidden = true; sel.after(seg); pintar();
+}
+for (const s of document.querySelectorAll('select[data-seg]')) segmentarSelect(s);
+
+// Ayudas plegables: las tarjetas con párrafos .ayuda llevan un botón «i» junto al título que los muestra u oculta
+function prepararAyudas(raiz = document) {
+  for (const card of raiz.querySelectorAll('.card')) {
+    const h2 = card.querySelector('h2');
+    if (!h2 || !card.querySelector('.ayuda') || h2.querySelector('.btnAyuda')) continue;
+    const b = document.createElement('button'); b.type = 'button'; b.className = 'btnAyuda'; b.textContent = 'i';
+    b.title = 'Mostrar u ocultar la ayuda';
+    b.classList.toggle('sel', card.classList.contains('verAyuda'));
+    b.addEventListener('click', () => b.classList.toggle('sel', card.classList.toggle('verAyuda')));
+    h2.appendChild(b);
+  }
+}
+// «Ahora en el dispositivo»: etiqueta y una ficha por dato (sin datos, vacío; con texto suelto, solo el texto)
+function pintarAhora(el, titulo, datos) {
+  el.innerHTML = '';
+  if (typeof datos === 'string') { el.textContent = datos; return; }
+  if (!datos || !datos.length) return;
+  const t = document.createElement('span'); t.textContent = titulo; el.appendChild(t);
+  for (const d of datos) { const c = document.createElement('span'); c.className = 'chipAhora'; c.textContent = d; el.appendChild(c); }
+}
 const DEVS = ['raton', 'teclado'];
 const ETIQUETA = { raton: 'Ratón', teclado: 'Teclado' };
 let config = configVacia();
@@ -1134,29 +1297,44 @@ function renderTodo() {
 }
 
 // ---------------------------------------------------------------- Perfiles
+// Perfiles como pastillas (General y una por aplicación); «+ Aplicación» despliega el campo para añadir otra
+const anadiendoPerfil = { raton: false, teclado: false };
 function renderPerfiles(d) {
   const cont = $('perfiles-' + d); cont.innerHTML = '';
-  const seg = document.createElement('div'); seg.className = 'seg';
+  const pastillas = document.createElement('div'); pastillas.className = 'pastillas';
   for (const p of ['', ...Object.keys(config[d].aplicaciones).sort()]) {
-    const b = document.createElement('button');
+    const b = document.createElement('button'); b.type = 'button'; b.className = 'pastilla';
     b.textContent = p || 'General';
+    b.title = p ? `Perfil de ${p}` : 'Para todas las aplicaciones sin perfil propio';
     if (p === perfilSel[d]) b.classList.add('sel');
     b.addEventListener('click', () => { perfilSel[d] = p; renderPerfiles(d); renderBotones(d); });
-    seg.appendChild(b);
+    pastillas.appendChild(b);
   }
-  const inp = document.createElement('input');
-  inp.type = 'text'; inp.placeholder = 'programa.exe'; inp.setAttribute('list', 'dlApps'); inp.style.width = '150px';
-  const add = document.createElement('button'); add.textContent = 'Añadir aplicación';
-  add.addEventListener('click', () => {
-    let n = inp.value.trim().toLowerCase();
-    if (!n) return;
-    if (!n.endsWith('.exe')) n += '.exe';
-    if (!/^[\w.\- ]+\.exe$/.test(n)) { aviso('Nombre de programa no válido: ' + n, 'err'); return; }
-    botonesDe(d, n); perfilSel[d] = n; marcarCambios(); renderPerfiles(d); renderBotones(d);
-  });
-  cont.append(seg, inp, add);
+  const mas = document.createElement('button'); mas.type = 'button'; mas.className = 'pastilla mas';
+  mas.textContent = anadiendoPerfil[d] ? '× Cancelar' : '+ Aplicación';
+  mas.title = 'Añadir un perfil para un programa concreto';
+  mas.addEventListener('click', () => { anadiendoPerfil[d] = !anadiendoPerfil[d]; renderPerfiles(d); });
+  pastillas.appendChild(mas);
+  cont.appendChild(pastillas);
+  if (anadiendoPerfil[d]) {
+    const inp = document.createElement('input');
+    inp.type = 'text'; inp.placeholder = 'programa.exe'; inp.setAttribute('list', 'dlApps'); inp.style.width = '170px';
+    const add = document.createElement('button'); add.type = 'button'; add.className = 'primary'; add.textContent = 'Añadir';
+    const anadir = () => {
+      let n = inp.value.trim().toLowerCase();
+      if (!n) return;
+      if (!n.endsWith('.exe')) n += '.exe';
+      if (!/^[\w.\- ]+\.exe$/.test(n)) { aviso('Nombre de programa no válido: ' + n, 'err'); return; }
+      anadiendoPerfil[d] = false;
+      botonesDe(d, n); perfilSel[d] = n; marcarCambios(); renderPerfiles(d); renderBotones(d);
+    };
+    add.addEventListener('click', anadir);
+    inp.addEventListener('keydown', e => { if (e.key === 'Enter') anadir(); if (e.key === 'Escape') { anadiendoPerfil[d] = false; renderPerfiles(d); } });
+    cont.append(inp, add);
+    setTimeout(() => inp.focus());
+  }
   if (perfilSel[d]) {
-    const quitar = document.createElement('button'); quitar.className = 'danger'; quitar.textContent = 'Quitar perfil';
+    const quitar = document.createElement('button'); quitar.type = 'button'; quitar.className = 'danger fantasma'; quitar.textContent = 'Quitar perfil';
     quitar.addEventListener('click', () => {
       if (!confirm(`¿Quitar el perfil de ${perfilSel[d]}?`)) return;
       delete config[d].aplicaciones[perfilSel[d]]; perfilSel[d] = ''; marcarCambios(); renderPerfiles(d); renderBotones(d);
@@ -1167,9 +1345,13 @@ function renderPerfiles(d) {
 }
 function ayudaPerfil(d) {
   const e = est(d);
-  $('perfilAyuda-' + d).textContent = perfilSel[d]
+  // La ayuda del perfil sale al pasar el ratón por su pastilla (no ocupa una línea fija)
+  const ayuda = perfilSel[d]
     ? `Se aplica cuando ${perfilSel[d]} tiene el foco al pulsar. "Como en General" usa lo del perfil General.`
     : 'Para todas las aplicaciones sin perfil propio.' + (e && e.appActual ? ` Última aplicación detectada al pulsar: ${e.appActual}.` : '');
+  $('perfilAyuda-' + d).textContent = ayuda;
+  const elegida = $('perfiles-' + d).querySelector('.pastilla.sel');
+  if (elegida) elegida.title = ayuda;
   const ya = new Set([...Object.keys(config.raton.aplicaciones), ...Object.keys(config.teclado.aplicaciones)]);
   const rec = new Set([...((est('raton') || {}).recientes || []), ...((est('teclado') || {}).recientes || [])]);
   $('dlApps').innerHTML = [...rec].filter(a => !ya.has(a)).map(a => `<option value="${a}">`).join('');
@@ -1985,18 +2167,35 @@ function accionValida(v) {
 
 // ---------------------------------------------------------------- Tabla de botones / teclas
 const TIPOS_PULSACION = [['doble', 'Doble clic'], ['larga', 'Pulsación larga']];
-// Vista de los botones y teclas: 'panel' (lista y panel), 'fichas' o 'acordeon'; se recuerda en el navegador
+// Vista de los botones y teclas: 'panel' (lista y panel), 'fichas' o 'acordeon' (clic en el botón lateral), y los iconos
+// de colores o de un solo color (clic derecho en el mismo botón); las dos cosas se recuerdan en el navegador
 const VISTAS_BOTONES = ['panel', 'fichas', 'acordeon'];
-let vistaBotones = 'panel';
-try { const v = localStorage.getItem('vistaBotones'); if (VISTAS_BOTONES.includes(v)) vistaBotones = v; } catch {}
+let vistaBotones = 'panel', iconosUnColor = false;
+try {
+  let v = localStorage.getItem('vistaBotones');
+  iconosUnColor = localStorage.getItem('iconosUnColor') === '1';
+  if (v === 'fichasMono') { v = 'fichas'; iconosUnColor = true; }      // vista de una versión anterior: fichas de un color
+  if (VISTAS_BOTONES.includes(v)) vistaBotones = v;
+} catch {}
 const abierto = { raton: null, teclado: null };   // botón con el editor abierto en cada pestaña
 const mayuscula = s => s ? s[0].toUpperCase() + s.slice(1) : s;
 
 // Cada botón es una cabecera (punto de pulsación, nombre y resumen de su acción) y su editor; la vista elegida
 // solo decide dónde se colocan: lista a la izquierda y editor a la derecha, fichas con el editor debajo, o acordeón
+// Icono (Segoe Fluent Icons) y familia de color de cada botón o tecla en la vista de fichas
+const ICONO_RATON = { 0x0050: '', 0x0051: '', 0x0052: '', 0x0053: '', 0x0056: '', 0x00C3: '', 0x00C4: '' };
+const ICONO_TECLA_F = [null, ['', 'luz'], ['', 'luz'], ['', 'luz'], ['', 'luz'], ['', 'voz'], ['', 'media'],
+  ['', 'voz'], ['', 'media'], ['', 'media'], ['', 'media'], ['', 'sonido'], ['', 'sonido']];
+const ICONO_TECLA = { 0x000A: ['', 'sistema'], 0x010A: ['', 'sistema'], 0x00EA: ['', 'sistema'], 0x006F: ['', 'sistema'],
+  0x00E9: ['', 'sonido'] };
+function iconoDe(d, b) {
+  if (d === 'raton') return [ICONO_RATON[b.cid] || '', 'raton'];
+  return ICONO_TECLA[b.cid] || (b.pos >= 1 && b.pos <= 12 && ICONO_TECLA_F[b.pos]) || ['', 'sistema'];
+}
 function renderBotones(d) {
   const cont = $('tbBotones-' + d); cont.innerHTML = '';
-  cont.className = 'botones vista-' + vistaBotones;
+  // Con iconos de un color, todos los iconos (y la ficha abierta) van en el color de acento
+  cont.className = 'botones vista-' + vistaBotones + (iconosUnColor ? ' vista-mono' : '');
   const lista = document.createElement('div'); lista.className = 'listaBotones';
   const panel = document.createElement('div'); panel.className = 'panelBoton';
   const separado = vistaBotones !== 'acordeon';            // lista y panel, fichas: los editores van aparte
@@ -2007,10 +2206,11 @@ function renderBotones(d) {
   for (const b of listaBotones(d)) {
     const key = hex4(b.cid);
     const item = document.createElement('div');
-    item.className = 'itemBoton'; item.id = `fila-${d}-${key}`; item.dataset.key = key;
+    const [glifo, familia] = iconoDe(d, b);
+    item.className = 'itemBoton t-' + familia; item.id = `fila-${d}-${key}`; item.dataset.key = key; item.dataset.familia = familia;
     const cab = document.createElement('button');
-    cab.type = 'button'; cab.className = 'cabBoton';
-    cab.innerHTML = `<span class="flecha"></span><span class="dot" id="dot-${d}-${key}"></span>` +
+    cab.type = 'button'; cab.className = 'cabBoton'; cab.title = `${nombre(d, b.cid)} · código ${key}`;
+    cab.innerHTML = `<span class="icoFicha" aria-hidden="true">${glifo}</span><span class="flecha"></span><span class="dot" id="dot-${d}-${key}"></span>` +
       `<span class="nomBoton">${nombre(d, b.cid)} <span class="hex">${key}</span></span><span class="resBoton"></span>`;
     cab.addEventListener('click', () => abrirBoton(d, key, true));
     const res = cab.querySelector('.resBoton');
@@ -2122,6 +2322,9 @@ function aplicarAbierto(d) {
   }
   for (const it of cont.querySelectorAll('.itemBoton')) it.classList.toggle('abierto', it.dataset.key === abierto[d]);
   for (const ed of cont.querySelectorAll('.editorBoton')) ed.hidden = ed.dataset.key !== abierto[d];
+  // En fichas, la franja del editor lleva el color de la ficha abierta
+  const panel = cont.querySelector('.panelBoton'), it = cont.querySelector('.itemBoton.abierto');
+  if (panel) panel.className = 'panelBoton' + (it ? ' t-' + it.dataset.familia : '');
 }
 // Botón de icono (como el del tema) que pasa por las tres vistas; el icono es el de la vista actual
 const SVG_VISTA = '<svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">';
@@ -2130,18 +2333,28 @@ const ICONOS_VISTA = {
   fichas: SVG_VISTA + '<rect x="3" y="3" width="7.5" height="7.5" rx="1.5"/><rect x="13.5" y="3" width="7.5" height="7.5" rx="1.5"/><rect x="3" y="13.5" width="7.5" height="7.5" rx="1.5"/><rect x="13.5" y="13.5" width="7.5" height="7.5" rx="1.5"/></svg>',
   acordeon: SVG_VISTA + '<path d="M9 6h12M9 12h12M9 18h12M3.5 4.5 5.5 6l-2 1.5M3.5 10.5 5.5 12l-2 1.5M3 17l1.5 2 1.5-2"/></svg>',
 };
+// Fichas de un color: el mismo icono, con las cuatro fichas rellenas
 const NOMBRE_VISTA = { panel: 'lista y panel', fichas: 'fichas', acordeon: 'acordeón' };
 function pintarSelectorVista() {
   const sig = VISTAS_BOTONES[(VISTAS_BOTONES.indexOf(vistaBotones) + 1) % VISTAS_BOTONES.length];
   for (const b of document.querySelectorAll('.vistaBotones')) {
     b.innerHTML = ICONOS_VISTA[vistaBotones];
-    b.title = `Vista: ${NOMBRE_VISTA[vistaBotones]} (pulsa para ver como ${NOMBRE_VISTA[sig]})`;
+    b.title = `Vista: ${NOMBRE_VISTA[vistaBotones]}, iconos ${iconosUnColor ? 'de un color' : 'de colores'}\n` +
+      `Clic: ver como ${NOMBRE_VISTA[sig]} · Clic derecho: iconos ${iconosUnColor ? 'de colores' : 'de un color'}`;
   }
 }
 for (const b of document.querySelectorAll('.vistaBotones')) {
   b.addEventListener('click', () => {
     vistaBotones = VISTAS_BOTONES[(VISTAS_BOTONES.indexOf(vistaBotones) + 1) % VISTAS_BOTONES.length];
     try { localStorage.setItem('vistaBotones', vistaBotones); } catch {}
+    pintarSelectorVista();
+    for (const d of DEVS) renderBotones(d);
+  });
+  // Clic derecho: iconos de colores o de un solo color (en las tres vistas)
+  b.addEventListener('contextmenu', e => {
+    e.preventDefault();
+    iconosUnColor = !iconosUnColor;
+    try { localStorage.setItem('iconosUnColor', iconosUnColor ? '1' : '0'); localStorage.setItem('vistaBotones', vistaBotones); } catch {}
     pintarSelectorVista();
     for (const d of DEVS) renderBotones(d);
   });
@@ -2184,14 +2397,22 @@ function renderCombos() {
   const cont = $('zonaCombos'); cont.innerHTML = '';
   const esApp = !!perfilSel.teclado;
   const lista = combinacionesDe('teclado', perfilSel.teclado);
-  cont.innerHTML = '<h2 style="margin:18px 0 4px">Combinaciones</h2>' +
-    '<p class="note" style="margin:0 0 8px">Un disparador con su propia acción: una <b>tecla</b> (p. ej. Ctrl + Alt + K), ' +
+  cont.innerHTML = '<h2>Combinaciones</h2>' +
+    '<p class="note" style="margin:0 0 8px">Una tecla, un botón del ratón o un giro de rueda (con modificadores) con su propia acción' +
+    (esApp ? `, solo cuando ${perfilSel.teclado} tiene el foco.` : '.') + '</p>' +
+    '<p class="note ayuda" style="margin:0 0 8px">Un disparador con su propia acción: una <b>tecla</b> (p. ej. Ctrl + Alt + K), ' +
     'un <b>botón del ratón</b> con modificadores (p. ej. Ctrl + Atrás) o el <b>giro de la rueda</b> con modificadores ' +
     '(p. ej. Ctrl + rueda arriba). En botón y rueda hace falta al menos un modificador; sin él, el botón o la rueda ' +
     'hacen su función normal. ' +
     (esApp ? 'En este perfil se aplican cuando ' + perfilSel.teclado + ' tiene el foco; las que no estén aquí usan las del General.'
            : 'Si una combinación solo tiene acción en el perfil de una aplicación, en las demás llega a la aplicación tal cual (solo las de tecla).') +
     ' Solo funcionan en modo Activo.</p>';
+  if (!lista.length) {
+    const vacio = document.createElement('div'); vacio.className = 'vacio';
+    vacio.innerHTML = '<span class="glifoVacio" aria-hidden="true"></span><span>Aún no hay combinaciones' +
+      (esApp ? ' propias de esta aplicación (se usan las del General)' : '') + '. Añade una para que una tecla, un botón o la rueda hagan algo propio.</span>';
+    cont.appendChild(vacio);
+  }
   lista.forEach((c, i) => {
     const fila = document.createElement('div'); fila.className = 'comboFila';
     // Tipo de disparador
@@ -2240,6 +2461,7 @@ function renderCombos() {
   const add = document.createElement('button'); add.textContent = '+ Añadir combinación'; add.style.marginTop = '8px';
   add.addEventListener('click', () => { lista.push({ teclas: '', accion: 'atajo', atajo: '' }); marcarCambios(); renderCombos(); });
   cont.appendChild(add);
+  prepararAyudas($('cardCombos').parentElement);       // el título se crea de nuevo en cada repintado
 }
 
 // ---------------------------------------------------------------- Rueda
@@ -2317,32 +2539,35 @@ function pintarPruebaGesto() {
   const disponible = zona.parentElement.clientWidth;
   if (!disponible) return;                                 // pestaña oculta: se pinta al aparecer
   const dpr = window.devicePixelRatio || 1, u = distanciaGesto(), k = 1 / dpr;   // 1 cuenta = 1 píxel físico
-  // Zona cuadrada: lo justo para el cuadrado y un margen (mínimo 220 px), sin pasar del ancho de la columna
-  const lado = Math.round(Math.min(disponible, Math.max(220, 2 * u * k + 90)));
-  zona.style.width = lado + 'px';
-  lienzo.style.height = lado + 'px';
-  if (lienzo.width !== Math.round(lado * dpr) || lienzo.height !== Math.round(lado * dpr)) { lienzo.width = lienzo.height = Math.round(lado * dpr); }
+  // Zona más ancha que alta: de ancho, lo justo para el cuadrado y margen para moverse (mínimo 260 px, sin pasar de la
+  // columna); de alto, el cuadrado y un margen pequeño (mínimo 140 px), para que la tarjeta ocupe poco
+  const lado = 2 * u * k;
+  const ancho = Math.round(Math.min(disponible, Math.max(260, lado + 120)));
+  const alto = Math.round(Math.max(140, lado + 40));
+  zona.style.width = ancho + 'px';
+  lienzo.style.height = alto + 'px';
+  if (lienzo.width !== Math.round(ancho * dpr) || lienzo.height !== Math.round(alto * dpr)) { lienzo.width = Math.round(ancho * dpr); lienzo.height = Math.round(alto * dpr); }
   const g = lienzo.getContext('2d');
   g.setTransform(dpr, 0, 0, dpr, 0, 0);
-  g.clearRect(0, 0, lado, lado);
+  g.clearRect(0, 0, ancho, alto);
   const css = getComputedStyle(document.documentElement), col = n => css.getPropertyValue(n).trim();
-  const c = lado / 2, dir = decidirGesto(pruebaG.dx, pruebaG.dy, u);
+  const cx = ancho / 2, cy = alto / 2, dir = decidirGesto(pruebaG.dx, pruebaG.dy, u);
   // Cuadrado de lado 2 × distancia (la regla es por ejes): dentro, pulsación; fuera, gesto
   g.fillStyle = col(dir ? '--ok-soft' : '--accent-soft');
   g.strokeStyle = dir ? col('--ok') : col('--accent'); g.lineWidth = 2; g.setLineDash([6, 4]);
-  g.fillRect(c - u * k, c - u * k, 2 * u * k, 2 * u * k); g.strokeRect(c - u * k, c - u * k, 2 * u * k, 2 * u * k);
+  g.fillRect(cx - u * k, cy - u * k, lado, lado); g.strokeRect(cx - u * k, cy - u * k, lado, lado);
   g.setLineDash([]);
   if (pruebaG.camino.length > 1) {
     g.strokeStyle = col('--muted'); g.lineWidth = 2; g.beginPath();
-    pruebaG.camino.forEach(([x, y], i) => { const px = c + x * k, py = c + y * k; i ? g.lineTo(px, py) : g.moveTo(px, py); });
+    pruebaG.camino.forEach(([x, y], i) => { const px = cx + x * k, py = cy + y * k; i ? g.lineTo(px, py) : g.moveTo(px, py); });
     g.stroke();
   }
   // Cursor de prueba (el real queda oculto mientras el navegador captura el ratón); si se sale, se queda en el borde
-  const px = Math.max(7, Math.min(lado - 7, c + pruebaG.dx * k)), py = Math.max(7, Math.min(lado - 7, c + pruebaG.dy * k));
+  const px = Math.max(7, Math.min(ancho - 7, cx + pruebaG.dx * k)), py = Math.max(7, Math.min(alto - 7, cy + pruebaG.dy * k));
   g.fillStyle = dir ? col('--ok') : col('--accent'); g.strokeStyle = col('--card'); g.lineWidth = 2;
   g.beginPath(); g.arc(px, py, 7, 0, 7); g.fill(); g.stroke();
-  if (dir) { g.fillStyle = col('--ok'); g.font = 'bold 28px Segoe UI, sans-serif'; g.textAlign = 'right'; g.textBaseline = 'top'; g.fillText(FLECHA_GESTO[dir], lado - 8, 6); }
-  $('gNoCabe').hidden = 2 * u * k <= lado;
+  if (dir) { g.fillStyle = col('--ok'); g.font = 'bold 28px Segoe UI, sans-serif'; g.textAlign = 'right'; g.textBaseline = 'top'; g.fillText(FLECHA_GESTO[dir], ancho - 8, 6); }
+  $('gNoCabe').hidden = lado <= ancho;
 }
 function textoPruebaGesto(final) {
   const u = distanciaGesto(), dir = decidirGesto(pruebaG.dx, pruebaG.dy, u), r = $('gResultado');
@@ -2417,47 +2642,48 @@ function actualizarNivel() {
 // Lo que tiene ahora el teclado: texto informativo, rango del brillo y tiempos actuales como sugerencia
 function pintarLuzActual(t) {
   const l = t && t.conectado ? t.luz : null;
-  if (!l) {
-    $('luzActual').textContent = t && t.conectado ? 'Este teclado no permite controlar la retroiluminación.' : '';
-    return;
-  }
+  if (!l) { pintarAhora($('luzActual'), '', t && t.conectado ? 'Este teclado no permite controlar la retroiluminación.' : ''); return; }
   $('lNivel').max = l.niveles;
   if (!$('lModo').value) $('lNivel').value = l.nivel;
   actualizarNivel();
   for (const [id, k] of LUZ_TIEMPOS) $(id).placeholder = l[k];
-  $('luzActual').textContent = 'Ahora en el teclado: ' + (l.activa ? 'encendida' : 'apagada') +
-    ` · ${l.modo === 'manual' ? 'manual' : 'automática'} · brillo ${l.nivel} de ${l.niveles}` +
-    ` · se apaga a los ${l.apagarManosFuera} s sin manos, ${l.apagarManosCerca} s con las manos cerca y ${l.apagarConCorriente} s con cable`;
+  pintarAhora($('luzActual'), 'Ahora en el teclado', [l.activa ? 'Encendida' : 'Apagada', l.modo === 'manual' ? 'Manual' : 'Automática',
+    `Brillo ${l.nivel} de ${l.niveles}`, `${l.apagarManosFuera} s sin manos`, `${l.apagarManosCerca} s con manos cerca`, `${l.apagarConCorriente} s con cable`]);
 }
 for (const id of ['lActiva', 'lModo', 'lNivel', 'lFuera', 'lCerca', 'lCorriente']) {
   $(id).addEventListener('input', () => { actualizarNivel(); guardarLuz(); marcarCambios(); });
 }
 
 // ---------------------------------------------------------------- Velocidad del puntero (DPI del ratón)
+// «No tocar» o «Fijar» y, al fijar, barra y número con la velocidad
 function pintarDpi(v) {
-  $('dValor').value = v || '';
-  if (v) $('dRango').value = v;
-  $('dRango').classList.toggle('apagado', !v);
+  $('dModo').value = v ? 'fijar' : '';
+  $('dFijar').hidden = !v;
+  if (v) { $('dRango').value = v; $('dValor').value = v; }
 }
 function ponerDpi(v) {
   if (v) config.raton.dpi = v; else delete config.raton.dpi;
   pintarDpi(v); marcarCambios();
 }
+$('dModo').addEventListener('input', () => {
+  if (!$('dModo').value) { ponerDpi(undefined); return; }
+  const e = est('raton');
+  ponerDpi((e && e.dpi && e.dpi.actual) || Number($('dRango').value) || 1000);   // se parte de la que tiene ahora
+});
 $('dRango').addEventListener('input', () => ponerDpi(Number($('dRango').value)));
 $('dValor').addEventListener('change', () => {
   const r = rangoDpi(), v = Number($('dValor').value);
-  ponerDpi($('dValor').value === '' ? undefined : Math.max(r.min, Math.min(r.max, Math.round(v / r.paso) * r.paso)));
+  if (v > 0) ponerDpi(Math.max(r.min, Math.min(r.max, Math.round(v / r.paso) * r.paso))); else pintarDpi(config.raton.dpi);
 });
-$('dQuitar').addEventListener('click', () => ponerDpi(undefined));
 // Lo que tiene ahora el ratón: rango de la barra y texto informativo
 function pintarDpiActual(e) {
   const d = e && e.conectado ? e.dpi : null;
-  if (e && e.conectado && !('dpi' in e)) { $('dpiActual').textContent = SERVIDOR_ANTIGUO; return; }
-  if (!d) { $('dpiActual').textContent = e && e.conectado ? 'Este ratón no permite cambiar la velocidad del sensor.' : ''; return; }
+  if (e && e.conectado && !('dpi' in e)) { pintarAhora($('dpiActual'), '', SERVIDOR_ANTIGUO); return; }
+  if (!d) { pintarAhora($('dpiActual'), '', e && e.conectado ? 'Este ratón no permite cambiar la velocidad del sensor.' : ''); return; }
   for (const id of ['dRango', 'dValor']) { $(id).min = d.minimo; $(id).max = d.maximo; $(id).step = d.paso; }
   if (!config.raton.dpi) $('dRango').value = d.actual;
-  $('dpiActual').textContent = `Ahora en el ratón: ${d.actual} ppp · admite de ${d.minimo} a ${d.maximo} en pasos de ${d.paso}` +
-    (d.fabrica ? ` · de fábrica ${d.fabrica}` : '');
+  pintarAhora($('dpiActual'), 'Ahora en el ratón', [`${d.actual} ppp`, `Admite ${d.minimo}–${d.maximo}`, `Pasos de ${d.paso}`,
+    ...(d.fabrica ? [`Fábrica ${d.fabrica}`] : [])]);
 }
 
 // ---------------------------------------------------------------- Batería baja y Easy-Switch
@@ -2474,14 +2700,10 @@ for (const d of DEVS) {
 const SERVIDOR_ANTIGUO = 'El servidor en marcha es de una versión anterior: pulsa «Cerrar servidor» y vuelve a abrir iniciar.cmd.';
 function pintarEquipo(d, e) {
   const q = e && e.conectado ? e.equipos : null;
-  $('equipoInfo-' + d).textContent = !e || !e.conectado ? `${ETIQUETA[d]} no conectado.`
+  $('equipoInfo-' + d).textContent = !e || !e.conectado ? 'No conectado'
     : !('equipos' in e) ? SERVIDOR_ANTIGUO
-    : !q ? 'Este dispositivo no tiene Easy-Switch (cambio entre equipos).'
-    : `Este equipo es el canal ${q.actual} de los ${q.canales} del ${d === 'raton' ? 'ratón' : 'teclado'}.`;
-}
-function pintarBatInfo(d, e) {
-  $('batInfo-' + d).textContent = !e || !e.conectado ? '' : e.bateria == null || e.bateria < 0 ? 'Batería: desconocida.'
-    : `Ahora: ${e.bateria} %${e.cargando ? ' (cargando)' : ''}.`;
+    : !q ? 'Sin Easy-Switch'
+    : `Canal ${q.actual} de ${q.canales}`;
 }
 // Emparejamiento (común a teclado y ratón): { easySwitch: false, seguir: true, canal: { raton, teclado } }; solo lo que no es por defecto
 const emp = () => config.emparejamiento || {};
@@ -2608,6 +2830,7 @@ function pintarListas(l) {
 // Las dos vistas previas (lista y rejilla) con el aspecto general; la segunda opción sale seleccionada
 function pintarMuestras() {
   const l = leerListas();
+  for (const b of document.querySelectorAll('.muestraColor')) b.classList.toggle('sel', b.dataset.color.toLowerCase() === String(l.acento).toLowerCase());
   $('lsOpacidadVal').textContent = l.opacidad + ' %';
   // Con difuminado las esquinas las pone Windows 11 y solo hay dos: pequeñas (4 px) y normales (8 px)
   const radio = l.difuminado === 'no' || l.radio === 0 ? l.radio : (l.radio <= 6 ? 4 : 8);
@@ -2842,10 +3065,10 @@ async function refrescarEstado() {
   $('chkFondo').checked = estado.segundoPlano;
   $('chkBandejaTeclado').checked = !!(estado.bandeja && estado.bandeja.teclado);
   $('chkBandejaRaton').checked = !!(estado.bandeja && estado.bandeja.raton);
-  $('ruedaActual').textContent = estado.raton.rueda.length ? 'Ahora en el ratón: ' + estado.raton.rueda.join(' · ') : '';
+  pintarAhora($('ruedaActual'), 'Ahora en el ratón', estado.raton.rueda);
   pintarLuzActual(estado.teclado);
   pintarDpiActual(estado.raton);
-  for (const d of DEVS) { pintarEquipo(d, estado[d]); pintarBatInfo(d, estado[d]); }
+  for (const d of DEVS) pintarEquipo(d, estado[d]);
   const log = $('log');
   const abajo = log.scrollTop + log.clientHeight >= log.scrollHeight - 4;
   log.textContent = estado.registro.join('\n');
@@ -2918,19 +3141,18 @@ function textoAccion(d, a) {
 }
 // Ajustes que se pueden buscar: [pestaña, tarjeta, título, palabras clave]
 const AJUSTES_BUSCAR = [
+  ['teclado', 'cardCombos', 'Combinaciones', 'atajo global tecla modificador rueda boton'],
   ['teclado', 'cardLuz', 'Iluminación del teclado', 'retroiluminacion brillo luz apagar'],
-  ['teclado', 'zonaCombos', 'Combinaciones', 'atajo global tecla modificador rueda boton'],
   ['teclado', 'cardBateria-teclado', 'Batería del teclado', 'aviso notificacion bateria baja bandeja icono'],
-  ['teclado', 'cardEmparejamiento-teclado', 'Emparejamiento del teclado', 'easy-switch canal equipo cambiar seguir otro dispositivo'],
-  ['raton', 'cardDpi', 'Velocidad del puntero', 'dpi ppp sensibilidad sensor precision'],
+  ['raton', 'cardPuntero', 'Velocidad del puntero', 'dpi ppp sensibilidad sensor precision puntero'],
+  ['raton', 'cardPuntero', 'Gestos: distancia mínima', 'sensibilidad mover probar puntero'],
+  ['raton', 'cardRuedas', 'Ruedas', 'smartshift scroll desplazamiento invertir natural alta resolucion lateral pulgar lineas'],
   ['raton', 'cardBateria-raton', 'Batería del ratón', 'aviso notificacion bateria baja bandeja icono'],
-  ['raton', 'cardEmparejamiento-raton', 'Emparejamiento del ratón', 'easy-switch canal equipo cambiar seguir otro dispositivo'],
-  ['raton', 'cardGestos', 'Gestos: distancia mínima', 'sensibilidad mover probar'],
-  ['raton', 'cardRuedas', 'Ruedas', 'smartshift scroll desplazamiento invertir alta resolucion lateral pulgar lineas'],
-  ['raton', 'cardPortapapeles', 'Portapapeles', 'espera pegar devolver'],
-  ['listas', 'paneListas', 'Listas y rejillas', 'aspecto tema color transparencia difuminado esquinas iconos paleta'],
+  ['listas', 'paneListas', 'Apariencia de listas y rejillas', 'aspecto tema color transparencia difuminado esquinas iconos paleta'],
+  ['ajustes', 'cardEmparejamiento', 'Emparejamiento (Easy-Switch)', 'canal equipo cambiar seguir otro dispositivo'],
+  ['ajustes', 'cardPortapapeles', 'Portapapeles', 'espera pegar devolver'],
 ];
-const NOMBRE_TAB = { teclado: 'Teclado', raton: 'Ratón', listas: 'Listas/Rejillas' };
+const NOMBRE_TAB = { teclado: 'Teclado', raton: 'Ratón', listas: 'Apariencia', ajustes: 'Ajustes' };
 function indiceBusqueda() {
   const r = [];
   for (const d of DEVS) {
@@ -3020,12 +3242,22 @@ document.addEventListener('keydown', e => {
 });
 
 // Pestañas de la configuración: Teclado / Ratón (con el nombre del periférico conectado) / Listas / Actividad / Registro
-const PANES = { teclado: 'paneTeclado', raton: 'paneRaton', listas: 'paneListas', actividad: 'paneActividad', registro: 'paneRegistro' };
+const PANES = { teclado: 'paneTeclado', raton: 'paneRaton', listas: 'paneListas', ajustes: 'paneAjustes', actividad: 'paneActividad' };
 function activarTab(clave) {
   for (const b of document.querySelectorAll('#tabsConfig > button')) b.classList.toggle('sel', b.dataset.tab === clave);
   for (const [k, id] of Object.entries(PANES)) $(id).classList.toggle('hidden', k !== clave);
   $('configScroll').scrollTop = 0;
-  if (clave === 'registro') $('log').scrollTop = $('log').scrollHeight;
+  if (clave === 'actividad' && !$('log').hidden) $('log').scrollTop = $('log').scrollHeight;
+}
+// Actividad: eventos en directo o registro del servidor
+for (const b of document.querySelectorAll('#vistaActividad button')) {
+  b.addEventListener('click', () => {
+    for (const o of document.querySelectorAll('#vistaActividad button')) o.classList.toggle('sel', o === b);
+    $('eventos').hidden = b.dataset.v !== 'eventos';
+    $('log').hidden = b.dataset.v !== 'log';
+    $('modoAyuda').hidden = b.dataset.v !== 'eventos';
+    if (b.dataset.v === 'log') $('log').scrollTop = $('log').scrollHeight;
+  });
 }
 for (const b of document.querySelectorAll('#tabsConfig > button')) b.addEventListener('click', () => activarTab(b.dataset.tab));
 
@@ -3064,6 +3296,7 @@ function pintarBtnTema() {
 dibujarTeclado();
 renderTodo();
 pintarRueda({});
+prepararAyudas();
 if (location.protocol === 'file:') {
   banner('Esta página funciona a través del servidor local. Ejecuta <code>iniciar.cmd</code>: abrirá <code>http://localhost:8765</code> automáticamente.');
 } else {

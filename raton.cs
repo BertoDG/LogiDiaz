@@ -489,16 +489,17 @@ namespace LogiRaton {
       List<string> l = new List<string>();
       if (ssIdx != 0) {
         byte[] r = GetSmartShift();
-        l.Add("SmartShift: modo " + (r[0] == 2 ? "con tope" : r[0] == 1 ? "giro libre" : r[0].ToString())
-              + ", umbral " + (r[1] == 255 ? "desactivado" : r[1].ToString()) + " (fabrica " + r[2] + ")");
+        l.Add(r[0] == 2 ? "Con tope" : r[0] == 1 ? "Giro libre" : "Modo " + r[0]);
+        l.Add(r[1] == 255 ? "SmartShift desactivado" : "SmartShift " + r[1] + " (f\u00e1brica " + r[2] + ")");
       }
       if (hiresIdx != 0) {
         int m = Request(DevIdx, hiresIdx, 1, new byte[0], 2000)[0];
-        l.Add("Rueda: alta resolucion " + ((m & 2) != 0 ? "si" : "no") + ", invertida " + ((m & 4) != 0 ? "si" : "no"));
+        l.Add((m & 4) != 0 ? "Direcci\u00f3n natural" : "Direcci\u00f3n normal");
+        l.Add("Alta resoluci\u00f3n: " + ((m & 2) != 0 ? "s\u00ed" : "no"));
       }
       if (thumbIdx != 0) {
         byte[] r = Request(DevIdx, thumbIdx, 1, new byte[0], 2000);
-        l.Add("Rueda lateral: invertida " + ((r[1] & 1) != 0 ? "si" : "no"));
+        l.Add((r[1] & 1) != 0 ? "Pulgar invertido" : "Pulgar normal");
       }
       return l;
     }
