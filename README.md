@@ -53,6 +53,9 @@ No necesita instalación ni permisos de administrador, y no envía nada a intern
 Si `MachinePolicy` o `UserPolicy` de `Get-ExecutionPolicy -List` están en `Restricted` o `AllSigned`, la política la
 impone la empresa (GPO) y el script no arrancará: tiene que permitirlo el departamento de IT.
 
+Si el correo o la red de la empresa bloquean los `.cmd` y `.ps1`, usa la carpeta **`app_compartir`**: es la misma app con
+esos ficheros renombrados a `.cm.txt` y `.ps1.txt`; su `LEEME.md` explica cómo devolverles el nombre.
+
 ## Uso
 
 - **Guardar** aplica la configuración al momento y la guarda en `configuracion.json`.
