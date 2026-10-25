@@ -1,0 +1,3 @@
+# Los ficheros se guardan tal cual, sin convertir saltos de linea: los .cmd necesitan CRLF y raton.cs/raton.ps1
+# se compilan y ejecutan en Windows exactamente como estan.
+* -text

@@ -1,0 +1,12 @@
+# Configuracion personal: la crea la pagina al guardar (sin ella, la app arranca con valores por defecto)
+configuracion.json
+# Formato antiguo de configuracion: si existiera, la app lo convertiria en la configuracion de quien la descargue
+atajos.json
+
+# Datos de uso del equipo
+raton.log
+*.flag
+
+# Instrucciones locales para Claude Code y sus ajustes
+CLAUDE.md
+.claude/
