@@ -290,6 +290,7 @@ function Accion-Desde($v, $errores, [string]$donde) {
                 if ([int]::TryParse([string]$v.filas, [ref]$n) -and $n -gt 0) { $a.RejFilas = [Math]::Min(8, $n) }
                 if ([int]::TryParse([string]$v.columnas, [ref]$n) -and $n -gt 0) { $a.RejColumnas = [Math]::Min(8, $n) }
                 if ([int]::TryParse([string]$v.separacion, [ref]$n) -and $n -ge 0) { $a.RejSeparacion = [Math]::Min(40, $n) }
+                if ($v.gestoRapido -eq $false) { $a.GestoRapido = $false }   # sin gesto rapido: pulsar siempre abre el panel
             }
             'captura' {
                 # Captura de pantalla: texto (OCR), imagen (recorte) o pantalla (Imprimir pantalla)
@@ -588,7 +589,7 @@ function Convertir-Config($cfg) {
         $emp.seguir = [bool]$e.seguir
         foreach ($k in 'raton', 'teclado') {
             $c = if ($e.canal) { [string]$e.canal.$k } else { '' }
-            if (-not $c -or $c -eq 'siguiente') { continue }
+            if (-not $c -or $c -in 'auto', 'siguiente') { continue }    # automatico (el otro canal emparejado)
             if ($c -in '1', '2', '3') { $emp[$(if ($k -eq 'raton') { 'canalRaton' } else { 'canalTeclado' })] = [int]$c }
             else { [void]$errores.Add("Emparejamiento: canal del otro equipo no valido para $k '$c'") }
         }
@@ -672,7 +673,7 @@ function Estado-Dispositivo($m) {
         appActual = $s.AppActual; perfil = $s.Perfil; recientes = @($s.Recientes)
         bateria = $s.Bateria; cargando = $s.Cargando
         dpi = $(if ($s.Dpi) { [ordered]@{ actual = $s.Dpi[0]; minimo = $s.Dpi[1]; maximo = $s.Dpi[2]; paso = $s.Dpi[3]; fabrica = $s.Dpi[4] } } else { $null })
-        equipos = $(if ($s.Equipos) { [ordered]@{ canales = $s.Equipos[0]; actual = $s.Equipos[1] } } else { $null })
+        equipos = $(if ($s.Equipos) { [ordered]@{ canales = $s.Equipos[0]; actual = $s.Equipos[1]; emparejados = $(if ($s.Emparejados) { @($s.Emparejados) } else { $null }) } } else { $null })
         luz = $(if ($s.Luz) { [ordered]@{ activa = [bool]$s.Luz[0]; modo = $(if ($s.Luz[1] -eq 3) { 'manual' } else { 'automatico' })
                                          nivel = $s.Luz[2] + 1; niveles = $s.Luz[3]
                                          apagarManosFuera = $s.Luz[4]; apagarManosCerca = $s.Luz[5]; apagarConCorriente = $s.Luz[6] } } else { $null })
@@ -859,6 +860,13 @@ function Atender($ctx) {
                 Log "Icono de bandeja ($dev) desactivado"
             }
             Responder $ctx 200 (Json @{ ok = $true; bandeja = @{ raton = (Test-Path $trayFile.raton); teclado = (Test-Path $trayFile.teclado) } })
+        }
+        'POST /api/bandeja/probar' {
+            # Pasa el icono de bandeja de un periferico por todos sus estados (si esta apagado, se ve solo durante la prueba)
+            $dev = [string]((Leer-Cuerpo $req) | ConvertFrom-Json).dispositivo
+            if ($dev -notin 'raton', 'teclado') { Responder $ctx 400 (Json @{ error = 'Dispositivo no valido' }); return }
+            [LogiRaton.Bandeja]::Probar($dev)
+            Responder $ctx 200 (Json @{ ok = $true })
         }
         'POST /api/salir' {
             Log 'Cierre solicitado desde la pagina'

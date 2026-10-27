@@ -166,6 +166,7 @@ namespace LogiRaton {
     public int[] Luz { get; set; }            // retroiluminacion actual (ver Engine.LeerLuz); null si no tiene
     public int[] Dpi { get; set; }            // velocidad del sensor { actual, minimo, maximo, paso, fabrica }; null si no se puede ajustar
     public int[] Equipos { get; set; }        // Easy-Switch { canales, canal de este equipo (1..n) }; null si no tiene
+    public int[] Emparejados { get; set; }    // canales con un equipo emparejado (1..n); null si el dispositivo no lo dice
   }
 
   // ---- Comunicacion HID++ 2.0 con un dispositivo ----
@@ -200,6 +201,8 @@ namespace LogiRaton {
     public int DpiMin, DpiMax, DpiPaso, DpiDefecto;
     List<int> dpiLista;
     public int Equipos, EquipoActual = -1;      // Easy-Switch: canales y el de este equipo (0..n-1)
+    public volatile List<int> Emparejados;      // canales con un equipo emparejado (0..n-1); null si el dispositivo no lo dice
+    byte hostsInfoIdx;                          // 0x1815 Hosts Info (para saber que canales estan emparejados)
     bool batUnificada;
     public volatile int Bateria = -1;
     public volatile bool Cargando;
@@ -392,6 +395,7 @@ namespace LogiRaton {
         luzIdx = TryFeature(0x1982);                                        // retroiluminacion (Backlight2)
         dpiIdx = TryFeature(0x2201);                                        // velocidad del sensor (Adjustable DPI)
         hostIdx = TryFeature(0x1814);                                       // Easy-Switch (Change Host)
+        hostsInfoIdx = TryFeature(0x1815);                                  // canales emparejados (Hosts Info)
         if (dpiIdx != 0) ConDpi = this;
         return true;
       }
@@ -641,6 +645,30 @@ namespace LogiRaton {
       if (hostIdx == 0) return;
       byte[] r = Request(DevIdx, hostIdx, 0, new byte[0], 2000);
       Equipos = r[0]; EquipoActual = r[1];
+      // Canales emparejados: 0x1815 fn 1 (getHostInfo) devuelve, para cada canal, su estado (0 = libre)
+      if (hostsInfoIdx != 0) {
+        try {
+          List<int> l = new List<int>();
+          for (int h = 0; h < Equipos; h++) {
+            byte[] i = Request(DevIdx, hostsInfoIdx, 1, new byte[] { (byte)h }, 2000);
+            if (i.Length > 1 && i[1] != 0) l.Add(h);
+          }
+          if (!l.Contains(EquipoActual)) l.Add(EquipoActual);               // este equipo esta emparejado seguro
+          l.Sort();
+          Emparejados = l;
+        } catch { Emparejados = null; }
+      }
+    }
+
+    // Canal (1..n) al que ir al seguir al otro dispositivo en modo automatico: el otro canal emparejado; si hay varios,
+    // el siguiente emparejado despues de este. 0 = no se sabe cuales estan emparejados (se usa el siguiente canal);
+    // -1 = solo esta emparejado este equipo (no hay adonde ir).
+    public int DestinoAutomatico() {
+      List<int> l = Emparejados;
+      if (l == null) return 0;
+      if (l.Count < 2) return -1;
+      foreach (int c in l) if (c > EquipoActual) return c + 1;
+      return l[0] == EquipoActual ? l[1] + 1 : l[0] + 1;
     }
     // canal: 1..n, o 0 = el siguiente. Devuelve false si ya esta en ese canal (o no existe).
     // Mientras esta conectado aqui, su canal actual es el de este equipo.
@@ -853,6 +881,7 @@ namespace LogiRaton {
     public int ListaIcono = -1;                          // tamano de los iconos de la lista en rejilla (px); -1 = como en Listas
     public int ListaVer = -1;                            // que se ve: 1 icono, 2 etiqueta, 4 contenido (suma); -1 = como en Listas
     public int RejFilas = 2, RejColumnas = 3, RejSeparacion = 8;   // recolocar ventana: cuadricula de la pantalla y hueco (px)
+    public bool GestoRapido = true;                                // recolocar ventana: mover y soltar enseguida recoloca sin panel
     public Dictionary<string, Accion> Variantes;   // pulsaciones extra: "doble", "larga"
     public string Transformacion;                  // transformar seleccion ("elegir" = lista)
     public bool IncluirVentanas, IncluirTransformaciones, IncluirOcr;   // paleta de comandos
@@ -1409,6 +1438,7 @@ namespace LogiRaton {
       string f = texto + "|" + nivel + cargando;
       MenuFlotante.EnUI(delegate {
         Item it;
+        if (probando.Contains(dev)) return;                   // durante la prueba manda la prueba
         if (!items.TryGetValue(dev, out it) || it.Ni == null) return;
         if (f == it.Firma) return;
         it.Firma = f;
@@ -1416,6 +1446,44 @@ namespace LogiRaton {
         Icon nuevo = Render(dev, nivel, cargando);
         Icon viejo = it.Icono; it.Icono = nuevo; it.Ni.Icon = nuevo;
         if (viejo != null) { DestroyIcon(viejo.Handle); viejo.Dispose(); }
+      });
+    }
+
+    // Prueba del icono: pasa por todos sus estados, uno por segundo (carga de mas a menos, el rojo de bateria baja,
+    // cargando y sin dato) y al terminar vuelve a la bateria real. Si el icono de ese dispositivo esta apagado, se ve
+    // solo durante la prueba. Todo en el hilo de la UI.
+    static readonly HashSet<string> probando = new HashSet<string>();
+    static readonly int[,] ESTADOS_PRUEBA = { { 100, 0 }, { 75, 0 }, { 50, 0 }, { 25, 0 }, { 14, 0 }, { 5, 0 }, { 60, 1 }, { -1, 0 } };
+    public static void Probar(string dev) {
+      MenuFlotante.EnUI(delegate {
+        if (probando.Contains(dev)) return;                   // ya se esta probando
+        Item it;
+        if (!items.TryGetValue(dev, out it)) { it = new Item(); items[dev] = it; }
+        bool temporal = it.Ni == null;
+        if (temporal) { it.Ni = new NotifyIcon(); it.Ni.Visible = true; }
+        probando.Add(dev);
+        string nombre = dev == "raton" ? "Rat\u00f3n" : "Teclado";
+        int i = 0;
+        System.Windows.Forms.Timer t = new System.Windows.Forms.Timer();
+        t.Interval = 1100;
+        EventHandler paso = null;
+        paso = delegate {
+          if (i >= ESTADOS_PRUEBA.GetLength(0)) {
+            t.Stop(); t.Dispose();
+            probando.Remove(dev);
+            if (temporal) Ocultar(dev); else it.Firma = null;   // la proxima actualizacion pone la bateria real
+            return;
+          }
+          int nivel = ESTADOS_PRUEBA[i, 0]; bool carga = ESTADOS_PRUEBA[i, 1] != 0;
+          Icon nuevo = Render(dev, nivel, carga);
+          Icon viejo = it.Icono; it.Icono = nuevo; it.Ni.Icon = nuevo;
+          if (viejo != null) { DestroyIcon(viejo.Handle); viejo.Dispose(); }
+          it.Ni.Text = "Prueba (" + nombre + "): " + (nivel < 0 ? "sin dato" : nivel + " %" + (carga ? " cargando" : ""));
+          i++;
+        };
+        t.Tick += paso;
+        paso(null, EventArgs.Empty);                          // el primer estado, al momento
+        t.Start();
       });
     }
 
@@ -1524,22 +1592,20 @@ namespace LogiRaton {
           g.ResetClip();
           // Contorno siempre nitido
           using (Pen p = new Pen(col, 1.9f)) g.DrawPath(p, path);
-          // Cablecito del teclado
-          if (dev != "raton")
-            using (Pen p = new Pen(col, 1.9f)) { p.StartCap = p.EndCap = System.Drawing.Drawing2D.LineCap.Round; g.DrawLine(p, 16, 3, 16, 9); }
           // Detalle: huecos (teclas o rueda) que atraviesan el icono para que se reconozca
           g.CompositingMode = System.Drawing.Drawing2D.CompositingMode.SourceCopy;
           using (SolidBrush hueco = new SolidBrush(Color.Transparent)) {
             if (dev == "raton") {
-              g.FillRectangle(hueco, 15f, 5f, 2f, 6f);                       // ranura de la rueda
+              // Ranura de la rueda, donde la tiene el raton del icono (algo a la derecha del centro, arriba)
+              g.FillRectangle(hueco, RATON_X + 0.55f * RATON_W - 1f, RATON_Y + 0.18f * RATON_H, 2f, 0.15f * RATON_H);
             } else {
               // 2 filas de 6 teclas y una fila inferior con teclas laterales y barra espaciadora
               for (int fila = 0; fila < 2; fila++)
                 for (int c = 0; c < 6; c++)
-                  g.FillRectangle(hueco, 3.6f + c * 4.15f, 12f + fila * 4.3f, 2.9f, 2.9f);
-              g.FillRectangle(hueco, 3.6f, 20.6f, 2.9f, 2.9f);               // tecla inferior izquierda
-              g.FillRectangle(hueco, 8f, 20.6f, 16.2f, 2.9f);               // barra espaciadora
-              g.FillRectangle(hueco, 25.7f, 20.6f, 2.9f, 2.9f);             // tecla inferior derecha
+                  g.FillRectangle(hueco, 3.6f + c * 4.15f, 9f + fila * 4.3f, 2.9f, 2.9f);
+              g.FillRectangle(hueco, 3.6f, 17.6f, 2.9f, 2.9f);               // tecla inferior izquierda
+              g.FillRectangle(hueco, 8f, 17.6f, 16.2f, 2.9f);               // barra espaciadora
+              g.FillRectangle(hueco, 25.7f, 17.6f, 2.9f, 2.9f);             // tecla inferior derecha
             }
           }
           // Cargando: rayo arriba a la derecha. Primero se recorta un borde transparente alrededor (para que se
@@ -1573,10 +1639,27 @@ namespace LogiRaton {
       return gp;
     }
 
-    // Teclado: rectangulo ancho y redondeado (cuerpo); el cablecito se dibuja aparte, arriba
-    static System.Drawing.Drawing2D.GraphicsPath PathTeclado() { return Redondeado(1, 9, 30, 20, 4f); }
-    // Raton: capsula alta (cuerpo del raton) que ocupa casi todo el alto
-    static System.Drawing.Drawing2D.GraphicsPath PathRaton() { return Redondeado(8, 1, 16, 30, 8); }
+    // Teclado: rectangulo ancho y redondeado (cuerpo), centrado en alto
+    static System.Drawing.Drawing2D.GraphicsPath PathTeclado() { return Redondeado(1, 6, 30, 20, 4f); }
+    // Raton: la silueta del raton del icono de la app (tipo MX Master, con el saliente del pulgar a la izquierda), sacada
+    // de img\logo.png como contorno normalizado (0..1) y ajustada al icono de 32 px: 22 de ancho por 30 de alto
+    static readonly float[] SILUETA_RATON = {
+      0.38f,0f, 0.327f,0.029f, 0.3f,0.059f, 0.287f,0.088f, 0.28f,0.117f, 0.28f,0.146f, 0.28f,0.176f, 0.28f,0.205f, 0.28f,0.234f,
+      0.273f,0.263f, 0.273f,0.293f, 0.273f,0.322f, 0.273f,0.351f, 0.273f,0.38f, 0.227f,0.41f, 0.147f,0.439f, 0.113f,0.468f,
+      0.093f,0.498f, 0.073f,0.527f, 0.06f,0.556f, 0.04f,0.585f, 0.027f,0.615f, 0.007f,0.644f, 0f,0.673f, 0f,0.702f, 0.02f,0.732f,
+      0.047f,0.761f, 0.08f,0.79f, 0.127f,0.82f, 0.167f,0.849f, 0.22f,0.878f, 0.273f,0.907f, 0.34f,0.937f, 0.42f,0.966f, 0.58f,0.995f,
+      0.653f,1f, 0.787f,0.971f, 0.84f,0.941f, 0.88f,0.912f, 0.913f,0.883f, 0.94f,0.854f, 0.953f,0.824f, 0.973f,0.795f, 0.98f,0.766f,
+      0.993f,0.737f, 0.993f,0.707f, 1f,0.678f, 1f,0.649f, 1f,0.62f, 0.993f,0.59f, 0.987f,0.561f, 0.98f,0.532f, 0.973f,0.502f,
+      0.967f,0.473f, 0.96f,0.444f, 0.953f,0.415f, 0.947f,0.385f, 0.947f,0.356f, 0.94f,0.298f, 0.933f,0.268f, 0.927f,0.239f,
+      0.927f,0.21f, 0.92f,0.18f, 0.907f,0.151f, 0.887f,0.122f, 0.853f,0.093f, 0.787f,0.063f, 0.673f,0.034f, 0.5f,0.005f };
+    const float RATON_X = 5f, RATON_Y = 1f, RATON_W = 22f, RATON_H = 30f;
+    static System.Drawing.Drawing2D.GraphicsPath PathRaton() {
+      PointF[] p = new PointF[SILUETA_RATON.Length / 2];
+      for (int i = 0; i < p.Length; i++) p[i] = new PointF(RATON_X + SILUETA_RATON[2 * i] * RATON_W, RATON_Y + SILUETA_RATON[2 * i + 1] * RATON_H);
+      System.Drawing.Drawing2D.GraphicsPath gp = new System.Drawing.Drawing2D.GraphicsPath();
+      gp.AddPolygon(p);
+      return gp;
+    }
   }
 
   // ---- Combinaciones de teclas con accion propia (RegisterHotKey) ----
@@ -3447,9 +3530,15 @@ namespace LogiRaton {
   // cualquier celda pide muy poco movimiento. Una silueta translucida (FormDestino) marca en la pantalla real el sitio.
   public class FormRejilla : Form {
     const int MANTENER_MS = 450, FIJO_SEG = 20;
-    // Umbrales del gesto rapido: los mismos que los gestos (cuentas del sensor) y, con el cursor, algo menos en pixeles
-    static int UMBRAL_DESVIADO { get { return Engine.UmbralGesto; } }
-    static int UMBRAL_PX { get { return Math.Max(10, Engine.UmbralGesto * 4 / 5); } }
+    // Umbrales del gesto rapido: el doble que los gestos, para que el pequeno movimiento de la mano al pulsar el boton
+    // del pulgar no lo dispare (cuentas del sensor con el movimiento desviado; pixeles con el cursor)
+    static int UMBRAL_DESVIADO { get { return Engine.UmbralGesto * 2; } }
+    static int UMBRAL_PX { get { return Math.Max(40, Engine.UmbralGesto * 2); } }
+    // Movimiento que cuenta como gesto rapido: pasa el umbral y va claramente en un eje (el doble que en el otro)
+    static bool EsGesto(int x, int y, int umbral) {
+      int ax = Math.Abs(x), ay = Math.Abs(y);
+      return Math.Max(ax, ay) > umbral && Math.Max(ax, ay) >= 2 * Math.Min(ax, ay);
+    }
     [StructLayout(LayoutKind.Sequential)] struct RECT { public int L, T, R, B; }
     [StructLayout(LayoutKind.Sequential)] struct PUNTO { public int X, Y; }
     [StructLayout(LayoutKind.Sequential)] struct TAMANO { public int W, H; }
@@ -3488,6 +3577,7 @@ namespace LogiRaton {
     Rectangle[] zonasPantalla = new Rectangle[0], zonasLocal = new Rectangle[0];
     int monSel = -1;                   // pantalla de la seleccion (las celdas marcadas son siempre de una sola)
     int filas = 2, columnas = 3, sep = 8;
+    bool gestoRapido = true;           // mover y soltar enseguida recoloca sin panel (se puede quitar en la accion)
     Point celdaA = new Point(-1, -1), celdaB = new Point(-1, -1);   // rectangulo marcado (columna, fila)
     float esc = 1f;
     FormDestino destino;
@@ -3536,8 +3626,9 @@ namespace LogiRaton {
         // Movimiento: el del cursor o, con el boton de gestos (movimiento desviado), el que llega del raton
         int cx = Cursor.Position.X - inicio.X, cy = Cursor.Position.Y - inicio.Y, rx, ry, n;
         Recolocar.Movido(out rx, out ry, out n);
-        bool porDesviado = Math.Abs(rx) + Math.Abs(ry) > UMBRAL_DESVIADO;
-        if (!movido && (porDesviado || Math.Abs(cx) + Math.Abs(cy) > UMBRAL_PX)) movido = true;
+        bool porDesviado = EsGesto(rx, ry, UMBRAL_DESVIADO);
+        if (gestoRapido && !movido && (porDesviado || EsGesto(cx, cy, UMBRAL_PX))) movido = true;
+        if (!gestoRapido) movido = false;                        // sin gesto rapido: pulsar siempre abre el panel
         string decision = movido ? "gesto " + (Math.Abs(porDesviado ? rx : cx) >= Math.Abs(porDesviado ? ry : cy)
                                                ? ((porDesviado ? rx : cx) < 0 ? "izquierda" : "derecha")
                                                : ((porDesviado ? ry : cy) < 0 ? "arriba" : "abajo")) : "panel abierto";
@@ -3564,6 +3655,7 @@ namespace LogiRaton {
       filas = Math.Max(1, Math.Min(8, a != null ? a.RejFilas : 2));
       columnas = Math.Max(1, Math.Min(8, a != null ? a.RejColumnas : 3));
       sep = Math.Max(0, Math.Min(40, a != null ? a.RejSeparacion : 8));
+      gestoRapido = a == null || a.GestoRapido;
       return true;
     }
 
@@ -3585,7 +3677,7 @@ namespace LogiRaton {
       Point p = Cursor.Position;
       if (modo == "esperando") {
         int rx, ry, n; Recolocar.Movido(out rx, out ry, out n);
-        if (!movido && (Math.Abs(p.X - inicio.X) + Math.Abs(p.Y - inicio.Y) > UMBRAL_PX || Math.Abs(rx) + Math.Abs(ry) > UMBRAL_DESVIADO)) movido = true;
+        if (gestoRapido && !movido && (EsGesto(p.X - inicio.X, p.Y - inicio.Y, UMBRAL_PX) || EsGesto(rx, ry, UMBRAL_DESVIADO))) movido = true;
         if (!movido && (DateTime.UtcNow - t0).TotalMilliseconds >= MANTENER_MS) Mostrar("manteniendo");
       } else if (modo == "manteniendo") {
         int mon; Point c = CeldaEn(p, out mon);
@@ -4070,6 +4162,17 @@ namespace LogiRaton {
         foreach (Engine e in l) {
           if (e.Dead || e.Clave == clave || !e.TieneEquipos) continue;
           int canal = e.Clave == "raton" ? CanalOtroRaton : CanalOtroTeclado;
+          if (canal == 0) canal = e.DestinoAutomatico();                     // automatico: el otro canal emparejado
+          if (canal < 0) {
+            Acciones.Avisos.Enqueue("Seguir: '" + e.DeviceName + "' no tiene otro equipo emparejado al que ir");
+            continue;
+          }
+          if (canal > 0 && canal - 1 == e.EquipoActual) {
+            // El "canal del otro equipo" es el de este mismo equipo: no hay adonde ir (error de configuracion)
+            Acciones.Avisos.Enqueue("Seguir: '" + e.DeviceName + "' no se mueve porque su canal del otro equipo (" + canal +
+                                    ") es el de este equipo. Cambialo en Ajustes > Emparejamiento.");
+            continue;
+          }
           try {
             if (e.CambiarEquipo(canal))
               Acciones.Avisos.Enqueue("Seguir: el " + (clave == "raton" ? "raton" : "teclado") + " se ha ido de este equipo; '" +
@@ -4308,6 +4411,8 @@ namespace LogiRaton {
       s.Bateria = conectado && en != null ? en.Bateria : -1; s.Cargando = conectado && en != null && en.Cargando;
       if (conectado && en != null && en.TieneDpi && en.DpiActual > 0) s.Dpi = new int[] { en.DpiActual, en.DpiMin, en.DpiMax, en.DpiPaso, en.DpiDefecto };
       if (conectado && en != null && en.TieneEquipos && en.Equipos > 0) s.Equipos = new int[] { en.Equipos, en.EquipoActual + 1 };
+      List<int> emp = conectado && en != null ? en.Emparejados : null;
+      if (emp != null) s.Emparejados = emp.ConvertAll(c => c + 1).ToArray();
       lock (cfgLock) { s.Recientes = recientes.ToArray(); }
       return s;
     }

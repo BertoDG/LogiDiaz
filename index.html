@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>LogiDiaz+</title>
-<link rel="icon" type="image/x-icon" sizes="16x16 20x20 24x24 32x32 40x40 48x48 64x64 128x128 256x256" href="/icono.ico?v=2">
+<link rel="icon" type="image/x-icon" sizes="16x16 20x20 24x24 32x32 40x40 48x48 64x64 128x128 256x256" href="/icono.ico?v=3">
 <style>
   :root {
     --bg: #f4f6f9; --card: #ffffff; --text: #1d2330; --muted: #5f6b7a;
@@ -437,6 +437,7 @@
   .interruptor input[type=checkbox]:checked { background: var(--accent); }
   .interruptor input[type=checkbox]:checked::after { left: 16px; }
   .opciones { display: flex; flex-direction: column; gap: 10px; align-items: flex-start; }
+  .probarBandeja { padding: 3px 11px; font-size: 12.5px; }
   /* ---- Buscador: al final de la fila de pestañas; resultados en un desplegable bajo el campo ---- */
   .tabsPanel .buscador { position: relative; margin-left: auto; align-self: center; padding: 3px 0; }
   .buscador input[type=search] { font: inherit; font-size: 13px; width: 260px; max-width: 45vw; padding: 5px 12px; border-radius: 999px;
@@ -548,7 +549,7 @@
 <body>
 <div class="topFixed">
   <header class="barra">
-    <div class="marca"><svg class="logo" width="26" height="26" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256"><defs><linearGradient id="logoFondo" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#6A9BFF"/><stop offset=".5" stop-color="#426BBA"/><stop offset="1" stop-color="#2A3F8F"/></linearGradient></defs><rect x="8" y="8" width="240" height="240" rx="58" fill="url(#logoFondo)"/><rect x="30" y="80" width="138" height="104" rx="20" fill="#fff" fill-opacity=".22" stroke="#fff" stroke-opacity=".65" stroke-width="7"/><g fill="#fff"><rect x="48" y="98" width="24" height="18" rx="6"/><rect x="80" y="98" width="24" height="18" rx="6"/><rect x="112" y="98" width="24" height="18" rx="6"/><rect x="48" y="126" width="88" height="18" rx="6" fill-opacity=".85"/><rect x="48" y="154" width="88" height="12" rx="6" fill-opacity=".55"/></g><rect x="142" y="40" width="86" height="176" rx="43" fill="#fff"/><rect x="176" y="62" width="18" height="34" rx="9" fill="#426BBA"/></svg>LogiDiaz<span class="mas">+</span></div>
+    <div class="marca"><img class="logo" src="/img/logo.png" width="26" height="26" alt="">LogiDiaz<span class="mas">+</span></div>
     <div class="seg modos" id="modos" title="Modo de funcionamiento">
       <button data-modo="activo"><span class="pto"></span>Activo</button><button data-modo="prueba"><span class="pto"></span>Probar</button><button data-modo="pausado"><span class="pto"></span>Pausado</button>
     </div>
@@ -671,7 +672,7 @@
     <div class="card" id="cardBateria-teclado">
       <h2>Batería</h2>
       <div class="opciones">
-        <label class="interruptor"><input type="checkbox" id="chkBandejaTeclado"> Icono en la bandeja del sistema</label>
+        <div class="row"><label class="interruptor"><input type="checkbox" id="chkBandejaTeclado"> Icono en la bandeja del sistema</label><button type="button" class="probarBandeja" data-dispositivo="teclado" title="Pasa el icono por todos sus estados: carga, batería baja, cargando y sin dato">Probar</button></div>
         <label class="interruptor"><input type="checkbox" id="chkAvisoBat-teclado"> Avisar con la batería baja</label>
       </div>
       <p class="note ayuda">El icono de la bandeja se rellena según la batería y lleva un rayo mientras carga; se activa o se quita al momento.
@@ -761,7 +762,7 @@
     <div class="card" id="cardBateria-raton">
       <h2>Batería</h2>
       <div class="opciones">
-        <label class="interruptor"><input type="checkbox" id="chkBandejaRaton"> Icono en la bandeja del sistema</label>
+        <div class="row"><label class="interruptor"><input type="checkbox" id="chkBandejaRaton"> Icono en la bandeja del sistema</label><button type="button" class="probarBandeja" data-dispositivo="raton" title="Pasa el icono por todos sus estados: carga, batería baja, cargando y sin dato">Probar</button></div>
         <label class="interruptor"><input type="checkbox" id="chkAvisoBat-raton"> Avisar con la batería baja</label>
       </div>
       <p class="note ayuda">El icono de la bandeja se rellena según la batería y lleva un rayo mientras carga; se activa o se quita al momento.
@@ -848,14 +849,16 @@
         <tbody>
           <tr><td>Este equipo</td><td id="equipoInfo-teclado"></td><td id="equipoInfo-raton"></td></tr>
           <tr><td>Canal del otro equipo <span class="note">(adonde va al seguir al otro)</span></td>
-            <td><select id="canalOtro-teclado" data-seg><option value="siguiente">Siguiente</option><option value="1">1</option>
+            <td><select id="canalOtro-teclado" data-seg><option value="auto">Automático</option><option value="1">1</option>
               <option value="2">2</option><option value="3">3</option></select></td>
-            <td><select id="canalOtro-raton" data-seg><option value="siguiente">Siguiente</option><option value="1">1</option>
+            <td><select id="canalOtro-raton" data-seg><option value="auto">Automático</option><option value="1">1</option>
               <option value="2">2</option><option value="3">3</option></select></td></tr>
         </tbody>
       </table>
-      <p class="note ayuda">Al seguir, la app no puede saber a qué canal se ha ido el otro: va al que elijas aquí. Con dos equipos,
-        elige el canal del otro equipo. Para que al volver también se vengan los dos, la app tiene que estar en el otro equipo con
+      <p class="note err" id="avisoCanal" hidden></p>
+      <p class="note ayuda">Al seguir, la app no puede saber a qué canal se ha ido el otro (el dispositivo no lo dice). Con
+        «Automático» va al otro canal que tenga emparejado; si tiene varios, al siguiente emparejado; si el dispositivo no dice cuáles
+        tiene emparejados, al siguiente canal. Con 1, 2 o 3 va siempre a ese. Para que al volver también se vengan los dos, la app tiene que estar en el otro equipo con
         «Seguir» activado. Si apagas uno con su interruptor, el otro también se irá (para la app es lo mismo que cambiarlo de equipo).</p>
     </div>
     <div class="card" id="cardPortapapeles">
@@ -1966,12 +1969,21 @@ function editorAccion(cfg) {
         const fila = document.createElement('div'); fila.className = 'row';
         fila.append(txt('Cuadrícula'), num('filas', 2, 1, 8, '58px'), txt('filas ×'), num('columnas', 3, 1, 8, '58px'),
                     txt('columnas · hueco entre ventanas'), num('separacion', 8, 0, 40, '58px'), txt('px'));
+        // Gesto rápido (mover y soltar enseguida): se puede quitar para que pulsar abra siempre el panel
+        const filaGesto = document.createElement('div'); filaGesto.className = 'row'; filaGesto.style.margin = '6px 0 0';
+        const lab = document.createElement('label'); lab.className = 'interruptor';
+        const chk = document.createElement('input'); chk.type = 'checkbox'; chk.checked = act.gestoRapido !== false;
+        chk.addEventListener('change', () => { if (chk.checked) delete act.gestoRapido; else act.gestoRapido = false; marcarCambios(); pintar(); });
+        lab.append(chk, ' Gesto rápido (mover y soltar enseguida)');
+        filaGesto.appendChild(lab);
         const nota = document.createElement('div'); nota.className = 'note'; nota.style.margin = '6px 0 0';
-        nota.innerHTML = 'Mueve la <b>ventana activa</b>. <b>Mantener y mover</b>, soltando enseguida: ← mitad izquierda, → mitad derecha, ' +
-          '↑ maximizar, ↓ minimizar o restaurar. <b>Mantener quieto</b> un momento: aparece junto al cursor un panel pequeño con la cuadrícula; lleva el cursor a la celda y suelta (una silueta marca dónde quedará). ' +
+        nota.innerHTML = 'Mueve la <b>ventana activa</b>. ' + (act.gestoRapido === false ? '' :
+          '<b>Gesto rápido</b>: mantener, mover claramente hacia un lado y soltar enseguida: ← mitad izquierda, → mitad derecha, ' +
+          '↑ maximizar, ↓ minimizar o restaurar (un movimiento pequeño al pulsar no cuenta). ') +
+          '<b>Mantener quieto</b> un momento: aparece junto al cursor un panel pequeño con la cuadrícula; lleva el cursor a la celda y suelta (una silueta marca dónde quedará). ' +
           '<b>Pulsación corta</b>: el panel se queda abierto; arrastra de una celda a otra para ocupar varias. <b>Esc</b> o clic derecho cancelan sin mover nada. ' +
           'No mueve ventanas abiertas como administrador.';
-        det.append(fila, nota);
+        det.append(fila, filaGesto, nota);
         break;
       }
       case 'paleta': {
@@ -2918,7 +2930,7 @@ function pintarEquipo(d, e) {
   $('equipoInfo-' + d).textContent = !e || !e.conectado ? 'No conectado'
     : !('equipos' in e) ? SERVIDOR_ANTIGUO
     : !q ? 'Sin Easy-Switch'
-    : `Canal ${q.actual} de ${q.canales}`;
+    : `Canal ${q.actual} de ${q.canales}` + (Array.isArray(q.emparejados) ? ` · emparejados: ${q.emparejados.join(', ')}` : '');
 }
 // Emparejamiento (común a teclado y ratón): { easySwitch: false, seguir: true, canal: { raton, teclado } }; solo lo que no es por defecto
 const emp = () => config.emparejamiento || {};
@@ -2931,11 +2943,22 @@ function ponerEmp(cambiar) {
   if (Object.keys(e).length) config.emparejamiento = e; else delete config.emparejamiento;
   pintarEmparejamiento(); marcarCambios();
 }
+// Aviso si el «canal del otro equipo» elegido es el canal de este mismo equipo (al seguir no iría a ningún sitio)
+function avisarCanalOtro() {
+  const mal = DEVS.filter(d => {
+    const q = est(d) && est(d).conectado ? est(d).equipos : null, c = emp().canal && emp().canal[d];
+    return q && c && Number(c) === q.actual;
+  });
+  $('avisoCanal').hidden = !mal.length;
+  $('avisoCanal').textContent = mal.length ? `El canal del otro equipo del ${mal.map(d => d === 'raton' ? 'ratón' : 'teclado').join(' y del ')} ` +
+    `es el de este equipo: al seguir no iría a ningún sitio. Elige el canal de tu otro equipo.` : '';
+}
 function pintarEmparejamiento() {
+  avisarCanalOtro();
   const e = emp();
   for (const c of document.querySelectorAll('.chkEasySwitch')) c.checked = e.easySwitch !== false;
   for (const c of document.querySelectorAll('.chkSeguir')) c.checked = !!e.seguir;
-  for (const d of DEVS) $('canalOtro-' + d).value = String((e.canal && e.canal[d]) || 'siguiente');
+  for (const d of DEVS) $('canalOtro-' + d).value = String((e.canal && e.canal[d]) || 'auto');
 }
 for (const c of document.querySelectorAll('.chkEasySwitch'))
   c.addEventListener('change', () => { ponerEmp(e => { e.easySwitch = c.checked; }); renderTodo(); });   // la acción se marca desactivada
@@ -2944,7 +2967,7 @@ for (const d of DEVS) {
   $('canalOtro-' + d).addEventListener('change', () => ponerEmp(e => {
     const v = $('canalOtro-' + d).value;
     e.canal = e.canal || {};
-    if (v === 'siguiente') delete e.canal[d]; else e.canal[d] = Number(v);
+    if (v === 'auto') delete e.canal[d]; else e.canal[d] = Number(v);
   }));
 }
 
@@ -3265,6 +3288,17 @@ for (const b of document.querySelectorAll('#modos button')) {
     catch (e) { aviso('No se pudo cambiar de modo: ' + e.message, 'err'); }
   });
 }
+// Probar el icono de bandeja: el servidor lo pasa por todos sus estados (unos 9 s)
+for (const b of document.querySelectorAll('.probarBandeja')) {
+  b.addEventListener('click', async () => {
+    b.disabled = true;
+    try {
+      await api('/api/bandeja/probar', { dispositivo: b.dataset.dispositivo });
+      aviso(`Mira el icono del ${b.dataset.dispositivo === 'raton' ? 'ratón' : 'teclado'} en la bandeja: pasa por todos sus estados`, 'ok');
+    } catch (e) { aviso('No se pudo probar el icono: ' + e.message, 'err'); }
+    setTimeout(() => { b.disabled = false; }, 9000);                // lo que dura la prueba
+  });
+}
 // Menú del servidor (botón de encendido de la barra): se cierra con un clic fuera o con Esc
 function abrirMenuServidor(abrir) {
   $('panelServidor').hidden = !abrir;
@@ -3327,6 +3361,7 @@ async function refrescarEstado() {
   pintarAhora($('ruedaActual'), 'Ahora en el ratón', estado.raton.rueda);
   pintarLuzActual(estado.teclado);
   pintarDpiActual(estado.raton);  for (const d of DEVS) pintarEquipo(d, estado[d]);
+  avisarCanalOtro();
   const log = $('log');
   const abajo = log.scrollTop + log.clientHeight >= log.scrollHeight - 4;
   log.textContent = estado.registro.join('\n');
