@@ -830,7 +830,11 @@ namespace LogiRaton {
                 enCurso.TryGetValue(cid, out a);
                 enCurso.Remove(cid);
                 if (a != null && a.Variantes != null) SoltarVariantes(cid);
-                else if (enGesto.ContainsKey(cid)) { int[] mov = enGesto[cid]; enGesto.Remove(cid); RuedaGestos.Terminar(cid); FinishGesture(cid, a, mov); }
+                else if (enGesto.ContainsKey(cid)) {
+                  int[] mov = enGesto[cid]; enGesto.Remove(cid);
+                  if (RuedaGestos.Reiniciar(cid)) { mov[0] = 0; mov[1] = 0; }      // rueda a la vista sin moverse despues: centro
+                  RuedaGestos.Terminar(cid); FinishGesture(cid, a, mov);
+                }
                 else if (a != null && (a.Tipo == "boton" || a.Tipo == "defecto")) EmularBoton(a.Tipo == "boton" ? a.Boton : cid, false);
                 else if (a != null && (a.Tipo == "menu" || a.Tipo == "ventanas")) MenuFlotante.Soltado(cid);
                 else if (a != null && a.Tipo == "recolocar") { moverCursor.Remove(cid); Recolocar.Soltado(cid); }
@@ -845,6 +849,7 @@ namespace LogiRaton {
               if (enGesto.Count > 0 && b.Length >= 8) {
                 int dx = (short)((b[4] << 8) | b[5]), dy = (short)((b[6] << 8) | b[7]);
                 foreach (KeyValuePair<int, int[]> g in enGesto) {
+                  if (RuedaGestos.Reiniciar(g.Key)) { g.Value[0] = 0; g.Value[1] = 0; }   // la rueda acaba de aparecer
                   g.Value[0] += dx; g.Value[1] += dy;
                   RuedaGestos.Mover(g.Key, DireccionDe(g.Value));                     // solo hace algo si ese boton tiene la rueda
                 }
@@ -2147,6 +2152,7 @@ namespace LogiRaton {
     static Accion accion;
     static volatile string dir = "clic";
     static volatile bool visible;
+    static volatile bool reiniciar;                      // la rueda acaba de aparecer: el gesto vuelve a contar desde cero
     static System.Threading.Timer espera;
     static FormRueda form;
 
@@ -2154,14 +2160,22 @@ namespace LogiRaton {
       int t;
       lock (bloqueo) {
         if (espera != null) espera.Dispose();
-        t = ++turno; cidActual = cid; accion = a; dir = "clic"; visible = false;
+        t = ++turno; cidActual = cid; accion = a; dir = "clic"; visible = false; reiniciar = false;
         espera = new System.Threading.Timer(delegate { Mostrar(t); }, null, Math.Max(0, a.EsperaRueda), System.Threading.Timeout.Infinite);
       }
     }
 
+    // El motor lo consulta antes de sumar movimiento y al soltar: si la rueda acaba de aparecer, descarta lo acumulado
+    // (la inercia de la mano al pulsar) para que empiece en el centro y la direccion salga solo de lo que se mueva despues
+    public static bool Reiniciar(int cid) {
+      if (cid != cidActual || !reiniciar) return false;
+      reiniciar = false;
+      return true;
+    }
+
     static void Mostrar(int t) {
       Accion a; string d;
-      lock (bloqueo) { if (t != turno || cidActual < 0) return; visible = true; a = accion; d = dir; }
+      lock (bloqueo) { if (t != turno || cidActual < 0) return; visible = true; dir = "clic"; reiniciar = true; a = accion; d = dir; }
       MenuFlotante.EnUI(delegate {
         if (t != turno || cidActual < 0) return;              // ya se ha soltado
         if (form == null) form = new FormRueda();
