@@ -331,9 +331,6 @@
   /* Teclas: rectángulo transparente sobre la foto que solo se ve al resaltarse */
   .tecla .fondo { fill: transparent; stroke: none; transition: fill .12s, stroke .12s; }
   .tecla[data-code]:hover .fondo, .tecla[data-cid]:hover .fondo { fill: rgba(255, 255, 255, .14); }
-  /* Eligiendo la tecla de una combinación: todas las teclas se pueden pulsar */
-  #svgTeclado.eligiendo .tecla { cursor: crosshair; }
-  #svgTeclado.eligiendo .tecla:hover .fondo { fill: rgba(var(--resalte-rgb), .35); stroke: var(--resalte); stroke-width: 3; }
   .tecla.conf .fondo { fill: rgba(var(--resalte-rgb), .22); stroke: var(--resalte); stroke-width: 3;
                        filter: drop-shadow(0 0 4px rgba(var(--resalte-rgb), .9)); }
   .tecla.on .fondo { fill: rgba(var(--pulsado-rgb), .55); stroke: var(--pulsado); stroke-width: 3;
@@ -1424,7 +1421,8 @@ const GRUPOS_TECLAS = [
                   ['Home', 'Inicio'], ['End', 'Fin'], ['PageUp', 'Re Pág'], ['PageDown', 'Av Pág']]],
   ['Edición', [['Enter', 'Intro'], ['Esc', 'Esc'], ['Tab', 'Tab'], ['Space', 'Espacio'], ['Backspace', 'Retroceso'],
                ['Delete', 'Supr'], ['Insert', 'Insert']]],
-  ['Signos', [['Coma', ','], ['Punto', '.'], ['Menos', '-'], ['Mas', '+']]],
+  ['Signos', [['Coma', ','], ['Punto', '.'], ['Menos', '-'], ['Mas', '+'], ['0xDC', 'º'], ['0xDB', "'"], ['0xDD', '¡'],
+              ['0xBA', '`'], ['0xDE', '´'], ['0xC0', 'Ñ'], ['0xBF', 'Ç'], ['0xE2', '<']]],
   ['Multimedia', [['VolumeUp', 'Subir volumen'], ['VolumeDown', 'Bajar volumen'], ['Mute', 'Silenciar'], ['MicMute', 'Silenciar micrófono'],
                   ['PlayPause', 'Reproducir / pausa'], ['Next', 'Pista siguiente'], ['Prev', 'Pista anterior'], ['Stop', 'Detener']]],
   ['Sistema', [['PrintScreen', 'Imprimir pantalla'], ['Pause', 'Pausa'], ['CapsLock', 'Bloq Mayús'], ['NumLock', 'Bloq Num'],
@@ -1445,15 +1443,13 @@ const etiquetaTecla = t => ETIQ_TECLA[t.toUpperCase()] || t;
 const esModificador = t => ['CTRL', 'CONTROL', 'SHIFT', 'MAYUS', 'ALT', 'WIN'].includes(t.toUpperCase());
 const porNombre = (a, b) => a[1].localeCompare(b[1], 'es');
 
-// Teclas de la foto (código de la distribución española) -> nombre que entienden el editor y el servidor.
-// Las que no tienen nombre van como código de tecla de Windows (0x..) y se rotulan con su símbolo.
-const TECLA_FOTO = { Backquote: '0xDC', Minus: '0xDB', Equal: '0xDD', BracketLeft: '0xBA', BracketRight: '0xBB', Semicolon: '0xC0',
-  Quote: '0xDE', Backslash: '0xBF', IntlBackslash: '0xE2', Comma: 'Coma', Period: 'Punto', Slash: 'Menos',
-  ControlLeft: 'Ctrl', ControlRight: 'Ctrl', ShiftLeft: 'Shift', ShiftRight: 'Shift', AltLeft: 'Alt', AltRight: 'Alt', MetaLeft: 'Win',
-  NumpadEnter: 'Enter', NumpadEqual: '', AudioVolumeUp: 'VolumeUp', LaunchApp2: 'Calculator' };
-Object.assign(ETIQ_TECLA, { '0XDC': 'º', '0XDB': "'", '0XDD': '¡', '0XBA': '`', '0XBB': '+', '0XC0': 'Ñ', '0XDE': '´', '0XBF': 'Ç', '0XE2': '<' });
-function teclaDeFoto(code) {
-  if (code in TECLA_FOTO) return TECLA_FOTO[code];
+// Tecla física (e.code, distribución española) -> nombre que entienden el editor y el servidor.
+// Las que no tienen nombre van como código de tecla de Windows (0x..) y se rotulan con su símbolo (en GRUPOS_TECLAS).
+const TECLA_ES = { Backquote: '0xDC', Minus: '0xDB', Equal: '0xDD', BracketLeft: '0xBA', BracketRight: 'Mas', Semicolon: '0xC0',
+  Quote: '0xDE', Backslash: '0xBF', IntlBackslash: '0xE2', Comma: 'Coma', Period: 'Punto', Slash: 'Menos', NumpadEqual: '' };
+ETIQ_TECLA['0XBB'] = '+';                                      // configuraciones antiguas guardaban '+' como 0xBB
+function teclaDeCodigo(code) {
+  if (code in TECLA_ES) return TECLA_ES[code];
   if (CODIGOS[code]) return CODIGOS[code];
   if (/^Key[A-Z]$/.test(code)) return code.slice(3);
   if (/^Digit\d$/.test(code)) return code.slice(-1);
@@ -1461,30 +1457,15 @@ function teclaDeFoto(code) {
   if (/^F\d{1,2}$/.test(code)) return code;
   return '';
 }
-// Elegir teclas pulsándolas en la foto del teclado (una elección a la vez; Esc cancela)
-let eligiendoTecla = null, cancelarEleccion = null;
-function empezarElegir(alElegir, alCancelar) {
-  const previa = cancelarEleccion; if (previa) previa();
-  eligiendoTecla = alElegir; cancelarEleccion = alCancelar;
-  $('svgTeclado').classList.add('eligiendo');
-}
-function finElegir() { eligiendoTecla = null; cancelarEleccion = null; $('svgTeclado').classList.remove('eligiendo'); }
-$('visualTeclado').addEventListener('click', e => {
-  if (!eligiendoTecla) return;
-  e.stopPropagation(); e.preventDefault();                    // eligiendo: el clic no lleva a la fila de la tecla
-  const tecla = e.target.closest('.tecla');
-  if (tecla) eligiendoTecla(tecla.dataset.code || '');
-}, true);
-document.addEventListener('keydown', e => { if (e.key === 'Escape' && cancelarEleccion) cancelarEleccion(); });
 
-// opciones.disparador: es la tecla que dispara una combinación (se elige en la foto; sin "Atajos habituales")
+// opciones.disparador: es la tecla que dispara una combinación (sin "Atajos habituales")
 function editorAtajo(valor, onChange, opciones = {}) {
   const det = document.createElement('div'); det.className = 'detalle';
   let teclas = (valor || '').split('+').map(t => t.trim()).filter(Boolean);
   const combo = document.createElement('div'); combo.className = 'combo';
   const add = document.createElement('select');
   add.innerHTML = '<option value="">+ Añadir tecla</option>' + GRUPOS_TECLAS.map(([g, ks]) =>
-    `<optgroup label="${g}">` + ks.map(([t, l]) => `<option value="${t}">${l}</option>`).join('') + '</optgroup>').join('');
+    `<optgroup label="${g}">` + ks.map(([t, l]) => `<option value="${t}">${l.replace(/&/g, '&amp;').replace(/</g, '&lt;')}</option>`).join('') + '</optgroup>').join('');
   const cap = document.createElement('button');
   cap.className = 'icono-btn'; cap.textContent = '⌨'; cap.title = 'Capturar desde el teclado: pulsa la combinación';
   const esp = document.createElement('select');
@@ -1516,29 +1497,8 @@ function editorAtajo(valor, onChange, opciones = {}) {
   esp.addEventListener('change', () => { if (esp.value) { teclas = esp.value.split('+'); cambio(); } esp.value = ''; });
   cap.addEventListener('click', () => capturar(cap, v => { teclas = v.split('+'); cambio(); }));
   pintar();
-  if (!opciones.disparador) { det.append(combo, add, cap, esp); return det; }
-  // Disparador de combinación: elegir las teclas en la foto (los modificadores se suman; la primera tecla normal la completa)
-  const elegir = document.createElement('button'); elegir.type = 'button'; elegir.className = 'icono-btn';
-  const textoElegir = 'Elegir en la foto';
-  elegir.textContent = textoElegir; elegir.title = 'Pulsa las teclas en la foto del teclado de arriba (Esc cancela)';
-  const terminar = () => { elegir.textContent = textoElegir; elegir.classList.remove('primary'); finElegir(); };
-  elegir.addEventListener('click', () => {
-    if (elegir.classList.contains('primary')) { terminar(); return; }
-    elegir.textContent = 'Pulsa en la foto… (Esc cancela)'; elegir.classList.add('primary');
-    empezarElegir(code => {
-      const t = teclaDeFoto(code);
-      if (!t || !atajoValido(t)) { aviso('Esa tecla no se puede usar en una combinación', 'warn'); return; }
-      if (esModificador(t)) {
-        if (!teclas.some(x => x.toUpperCase() === t.toUpperCase())) {
-          const i = teclas.findIndex(x => !esModificador(x)); teclas.splice(i < 0 ? teclas.length : i, 0, t);
-        }
-        cambio(); return;                                       // sigue esperando la tecla principal
-      }
-      teclas = teclas.filter(esModificador); teclas.push(t);
-      cambio(); terminar();
-    }, terminar);
-  });
-  det.append(combo, elegir, add, cap);
+  if (!opciones.disparador) det.append(combo, add, cap, esp);
+  else det.append(combo, add, cap);
   return det;
 }
 // Captura desde el navegador. No recibe las combinaciones que Windows o el navegador se reservan
@@ -1550,11 +1510,7 @@ function capturar(btn, alTerminar) {
     e.preventDefault();
     if (e.type === 'keyup' && e.code !== 'PrintScreen') return;     // Imprimir pantalla solo llega al soltar
     if (['Control', 'Shift', 'Alt', 'Meta', 'OS'].includes(e.key)) return;
-    let tecla = CODIGOS[e.code] || null;
-    if (!tecla && /^Key[A-Z]$/.test(e.code)) tecla = e.code.slice(3);
-    if (!tecla && /^Digit\d$/.test(e.code)) tecla = e.code.slice(-1);
-    if (!tecla && /^Numpad\d$/.test(e.code)) tecla = 'Num' + e.code.slice(-1);
-    if (!tecla && /^F\d{1,2}$/.test(e.code)) tecla = e.code;
+    const tecla = teclaDeCodigo(e.code);
     window.removeEventListener('keydown', onKey, true);
     window.removeEventListener('keyup', onKey, true);
     btn.textContent = texto;
