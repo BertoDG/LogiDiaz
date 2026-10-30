@@ -92,6 +92,7 @@
   .configScroll { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding: 14px clamp(10px, 2vw, 28px) 40px; }
   #banner { display: none; padding: 10px 14px; border-radius: 8px; margin-bottom: 12px; background: var(--accent-soft); }
   #banner.show { display: block; }
+  #banner.err { color: var(--err); border: 1px solid currentColor; white-space: pre-line; }
   .pane > .card:last-child { margin-bottom: 0; }
   .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; align-items: start; margin-top: 4px; }
   @media (max-width: 900px) { .grid2 { grid-template-columns: minmax(0, 1fr); } }
@@ -1007,7 +1008,12 @@ function aviso(msg, cls) {
   $('eventos').prepend(line);
   while ($('eventos').childNodes.length > 200) $('eventos').lastChild.remove();
 }
-function banner(html) { $('banner').innerHTML = html || ''; $('banner').classList.toggle('show', !!html); }
+function banner(html) { $('banner').innerHTML = html || ''; $('banner').classList.toggle('show', !!html); $('banner').classList.remove('err'); }
+// Error al guardar: además del registro, a la vista arriba (hasta el siguiente guardado correcto)
+function errorGuardar(msg) {
+  aviso(msg, 'err');
+  const b = $('banner'); b.textContent = msg; b.classList.add('show', 'err');
+}
 function marcarCambios(v = true) { cambios = v; $('sinGuardar').textContent = v ? 'Cambios sin guardar' : ''; if (v) marcarConfigurados(); }
 
 // Token de esta ejecución del servidor: lo escribe raton.ps1 al servir la página y lo exige en la API
@@ -1503,9 +1509,12 @@ function editorAtajo(valor, onChange, opciones = {}) {
 }
 // Captura desde el navegador. No recibe las combinaciones que Windows o el navegador se reservan
 // (Win+…, Alt+Tab, Ctrl+W…): esas se añaden tecla a tecla o desde "Especial…".
+// Mientras tanto el servidor suelta las combinaciones: si no, una tecla reasignada llegaría ya cambiada.
 function capturar(btn, alTerminar) {
   const texto = btn.textContent;
   btn.textContent = 'Pulsa…';
+  const suspender = si => api('/api/capturar', { si }).catch(() => {});
+  suspender(true);
   const onKey = e => {
     e.preventDefault();
     if (e.type === 'keyup' && e.code !== 'PrintScreen') return;     // Imprimir pantalla solo llega al soltar
@@ -1513,6 +1522,7 @@ function capturar(btn, alTerminar) {
     const tecla = teclaDeCodigo(e.code);
     window.removeEventListener('keydown', onKey, true);
     window.removeEventListener('keyup', onKey, true);
+    suspender(false);
     btn.textContent = texto;
     if (!tecla) { aviso(`Tecla no admitida (${e.code}): añádela con "+ Añadir tecla"`, 'warn'); return; }
     const partes = [];
@@ -2559,6 +2569,18 @@ function comboDisparadorValido(c) {
   // Silenciar micrófono es una acción del servidor, no una tecla de Windows: no puede disparar una combinación
   return atajoValido(c.teclas) && !/(^|\+)\s*(MICMUTE|MICROFONO)\s*($|\+)/i.test(c.teclas);
 }
+// Como Combinaciones.Clave en el servidor: una tecla que escribe (letra, número, signo, espacio, Intro…) sin
+// Ctrl/Mayús/Alt/Win dejaría de funcionar, así que ella sola solo puede tener como acción otra tecla (reasignarla)
+function teclaSinModificador(teclas) {
+  const p = (teclas || '').split('+').map(t => t.trim().toUpperCase()).filter(Boolean);
+  if (!p.length || p.some(esModificador)) return false;
+  const t = p[0];
+  if (/^[A-Z0-9]$/.test(t) || /^NUM\d$/.test(t)) return true;
+  if (['SPACE', 'ESPACIO', 'ENTER', 'INTRO', 'TAB', 'BACKSPACE', 'RETROCESO', 'COMA', 'PUNTO', 'MENOS', 'MAS',
+       'NUMMULTIPLY', 'NUMADD', 'NUMSUBTRACT', 'NUMDECIMAL', 'NUMDIVIDE'].includes(t)) return true;
+  const vk = /^0X[0-9A-F]{1,2}$/.test(t) ? parseInt(t.slice(2), 16) : -1;
+  return (vk >= 0x30 && vk <= 0x5A) || (vk >= 0x60 && vk <= 0x6F) || (vk >= 0xBA && vk <= 0xE2) || [0x20, 0x0D, 0x09, 0x08].includes(vk);
+}
 // Modificadores (Ctrl/Mayús/Alt/Win) como botones activables por separado; guarda "Ctrl+Alt" en c.teclas
 function editorModificadores(valor, onChange) {
   const cont = document.createElement('span'); cont.className = 'mods';
@@ -3186,18 +3208,21 @@ $('btnGuardar').addEventListener('click', async () => {
         const disp = c.rueda ? ' (rueda ' + c.rueda + ')' : c.raton ? ' (' + (c.teclas || '') + '+' + nombre('raton', cidDe(c.raton)) + ')' : c.teclas ? ' (' + c.teclas + ')' : '';
         const donde = `${ETIQUETA[d]} ${perfil}: combinación ${i + 1}${disp}`;
         if (!comboDisparadorValido(c)) malos.push(donde + (c.raton || c.rueda ? ' sin modificador' : ' sin teclas'));
+        else if (comboTipo(c) === 'tecla' && c.accion !== 'atajo' && teclaSinModificador(c.teclas))
+          malos.push(donde + ' necesita Ctrl, Mayús, Alt o Win (sola, esa tecla dejaría de escribir; para cambiarla por otra, usa «Atajo de teclado»)');
         else if (!accionValida(c.accion ? c : null)) malos.push(donde);
       });
     }
   }
-  if (malos.length) { aviso('Revisa los atajos de: ' + malos.join(', '), 'err'); return; }
+  if (malos.length) { errorGuardar('No se ha guardado. Revisa: ' + malos.join('; ')); return; }
   guardando(true);
   try {
     await api('/api/config', JSON.stringify(config, null, 2));
+    if ($('banner').classList.contains('err')) banner('');
     marcarCambios(false);
     aviso('Configuración guardada y aplicada', 'ok');
     if (!$('paneAjustes').classList.contains('hidden')) cargarCopias();
-  } catch (e) { aviso('No se pudo guardar: ' + e.message, 'err'); }
+  } catch (e) { errorGuardar('No se pudo guardar: ' + e.message); }
   finally { guardando(false); }
 });
 // Mientras se guarda, el botón muestra una rueda girando y no se puede volver a pulsar (tampoco con Ctrl+S)

@@ -96,6 +96,7 @@ namespace LogiRaton {
     public static void SendCombo(int[] keys) {
       // Silenciar el microfono no es una pulsacion: lo hace el propio servidor (el resto de teclas se ignoran)
       foreach (int k in keys) if (k == MICRO) { Microfono.Alternar(); return; }
+      Combinaciones.AntesDeEnviar(keys);                      // que no las recojan nuestras propias combinaciones
       foreach (int k in keys) SendKey(k, false);
       for (int i = keys.Length - 1; i >= 0; i--) SendKey(keys[i], true);
     }
@@ -1679,11 +1680,25 @@ namespace LogiRaton {
     static volatile Dictionary<string, Perfil> apps = new Dictionary<string, Perfil>(StringComparer.OrdinalIgnoreCase);
     static readonly Dictionary<int, int> claveDeId = new Dictionary<int, int>();     // solo en el hilo de la ventana
     static readonly Dictionary<int, int> idDeClave = new Dictionary<int, int>();
+    static readonly Dictionary<int, uint> flagsDeId = new Dictionary<int, uint>();   // para volver a registrarla
+    // Reasignaciones (tecla sola -> otra tecla sola): id de cada variante con modificadores -> clave base (sin ellos)
+    static readonly Dictionary<int, int> baseDeId = new Dictionary<int, int>();
+    static readonly Dictionary<int, int> pendientes = new Dictionary<int, int>();   // tecla -> envios en curso
+    static int generacion;                                                          // cambia en cada Registrar
+    static volatile HashSet<int> teclasReservadas = new HashSet<int>();   // teclas registradas (se lee desde cualquier hilo)
+    static volatile int hiloUI = -1;
+    static volatile bool suspendidas;                                    // la web esta capturando una tecla
+    static System.Threading.Timer reanudar;
+    static readonly object cerrojo = new object();
+    // Mayus, AltGr (Ctrl+Alt), AltGr+Mayus, Ctrl, Alt, Ctrl+Mayus, Alt+Mayus (Win no: Windows se reserva casi todas)
+    static readonly int[] VARIANTES = { 4, 3, 7, 2, 1, 6, 5 };
     static volatile bool activo = true;
     static Receptor receptor;
 
     // Clave unica de una combinacion: modificadores (MOD_ALT 1, MOD_CONTROL 2, MOD_SHIFT 4, MOD_WIN 8) << 16 | tecla
-    public static int Clave(int[] teclas) {
+    public static int Clave(int[] teclas) { return Clave(teclas, false); }
+    // permitirSola: una tecla que escribe puede ir sin modificador si su accion es un atajo (se reasigna la tecla)
+    public static int Clave(int[] teclas, bool permitirSola) {
       uint mods = 0; int principal = -1;
       foreach (int k in teclas) {
         if (k == Keys.MICRO) throw new ArgumentException("Silenciar microfono no puede ser la tecla de una combinacion (si su accion)");
@@ -1697,7 +1712,8 @@ namespace LogiRaton {
       if (principal < 0) throw new ArgumentException("Falta la tecla principal (solo hay modificadores)");
       bool escribe = (principal >= 0x30 && principal <= 0x5A) || principal == 0x20 || principal == 0x0D || principal == 0x09 ||
                      principal == 0x08 || (principal >= 0x60 && principal <= 0x6F) || (principal >= 0xBA && principal <= 0xE2);
-      if (mods == 0 && escribe) throw new ArgumentException("Sin Ctrl, Mayus, Alt o Win esa tecla dejaria de funcionar: anade un modificador");
+      if (mods == 0 && escribe && !permitirSola)
+        throw new ArgumentException("Sin Ctrl, Mayus, Alt o Win esa tecla dejaria de funcionar: anade un modificador o usa la accion Atajo de teclado (reasignarla)");
       return (int)(mods << 16) | principal;
     }
 
@@ -1730,52 +1746,141 @@ namespace LogiRaton {
 
     // En el hilo de la ventana flotante (las combinaciones pertenecen al hilo que las registra)
     static void Registrar() {
-      if (receptor == null) { receptor = new Receptor(); receptor.CreateHandle(new CreateParams()); }
+      if (receptor == null) {
+        receptor = new Receptor(); receptor.CreateHandle(new CreateParams());
+        hiloUI = System.Threading.Thread.CurrentThread.ManagedThreadId;
+      }
       foreach (int id in claveDeId.Keys) UnregisterHotKey(receptor.Handle, id);
-      claveDeId.Clear(); idDeClave.Clear();
-      if (!activo) return;
+      claveDeId.Clear(); idDeClave.Clear(); flagsDeId.Clear(); baseDeId.Clear(); pendientes.Clear();
+      teclasReservadas = new HashSet<int>();
+      generacion++;
+      if (!activo || suspendidas) return;
       HashSet<int> claves = new HashSet<int>(general.Combos.Keys);
       foreach (Perfil p in apps.Values) claves.UnionWith(p.Combos.Keys);
       int sig = 1;
       foreach (int c in claves) {
-        if (RegisterHotKey(receptor.Handle, sig, (uint)(c >> 16) | 0x4000, (uint)(c & 0xFF))) {   // 0x4000 = MOD_NOREPEAT
-          claveDeId[sig] = c; idDeClave[c] = sig; sig++;
+        // Las reasignaciones repiten al mantener la tecla, como una tecla normal; el resto, no (0x4000 = MOD_NOREPEAT)
+        uint flags = (uint)(c >> 16) | (EsReasignada(c) ? 0u : 0x4000u);
+        if (RegisterHotKey(receptor.Handle, sig, flags, (uint)(c & 0xFF))) {
+          claveDeId[sig] = c; idDeClave[c] = sig; flagsDeId[sig] = flags; sig++;
         } else Acciones.Avisos.Enqueue("No se pudo reservar la combinacion " + Nombre(c) + ": Windows u otro programa ya la usa");
       }
+      // Una tecla reasignada tambien cambia con Mayus, AltGr, Ctrl o Alt (salvo que esa combinacion tenga accion propia)
+      foreach (int c in claves) {
+        if (!EsReasignada(c)) continue;
+        foreach (int m in VARIANTES) {
+          int v = (m << 16) | c;
+          if (claves.Contains(v)) continue;
+          if (RegisterHotKey(receptor.Handle, sig, (uint)m, (uint)(c & 0xFF))) {
+            claveDeId[sig] = v; flagsDeId[sig] = (uint)m; baseDeId[sig] = c; sig++;
+          }
+        }
+      }
+      HashSet<int> vks = new HashSet<int>();
+      foreach (int c in claveDeId.Values) vks.Add(c & 0xFF);
+      teclasReservadas = vks;
+    }
+
+    // Mientras la web captura una tecla se sueltan todas (si no, veria la tecla ya reasignada).
+    // Se reanudan solas a los 30 s por si la pagina se cierra a medias.
+    public static void Suspender(bool si) {
+      lock (cerrojo) {
+        if (reanudar != null) { reanudar.Dispose(); reanudar = null; }
+        if (si) reanudar = new System.Threading.Timer(delegate { Suspender(false); }, null, 30000, System.Threading.Timeout.Infinite);
+        if (suspendidas == si) return;
+        suspendidas = si;
+      }
+      if (receptor != null) MenuFlotante.EnUI(delegate { Registrar(); });
+    }
+
+    // Antes de que el propio servidor envie teclas se liberan un momento las combinaciones con esas teclas, para no
+    // recogerlas nosotros mismos (al intercambiar dos teclas una dispararia la otra sin fin, y un paso de macro con
+    // 0xE2 saldria reasignado). Desde otro hilo se espera a que esten liberadas.
+    public static void AntesDeEnviar(int[] keys) {
+      HashSet<int> res = teclasReservadas;
+      if (res.Count == 0 || receptor == null) return;
+      List<int> vks = new List<int>();
+      foreach (int k in keys) { int vk = k & 0xFF; if (res.Contains(vk) && !vks.Contains(vk)) vks.Add(vk); }
+      if (vks.Count == 0) return;
+      MethodInvoker liberar = delegate { foreach (int vk in vks) Liberar(vk); };
+      if (System.Threading.Thread.CurrentThread.ManagedThreadId == hiloUI) liberar();
+      else MenuFlotante.EnUIEsperando(liberar, 300);
+    }
+
+    // En el hilo de la ventana. Se vuelven a registrar 100 ms despues del ultimo envio de esa tecla.
+    static void Liberar(int vk) {
+      int gen = generacion;
+      List<int> ids = new List<int>();
+      foreach (KeyValuePair<int, int> p in claveDeId) if ((p.Value & 0xFF) == vk) { UnregisterHotKey(receptor.Handle, p.Key); ids.Add(p.Key); }
+      if (ids.Count == 0) return;
+      int n; pendientes.TryGetValue(vk, out n); pendientes[vk] = n + 1;
+      System.Windows.Forms.Timer t = new System.Windows.Forms.Timer();
+      t.Interval = 100;
+      t.Tick += delegate {
+        t.Stop(); t.Dispose();
+        if (gen != generacion) return;                         // se volvio a registrar todo entretanto
+        int r; pendientes.TryGetValue(vk, out r);
+        if (r > 1) { pendientes[vk] = r - 1; return; }
+        pendientes.Remove(vk);
+        if (!activo || suspendidas) return;
+        foreach (int id in ids) { uint f; if (flagsDeId.TryGetValue(id, out f)) RegisterHotKey(receptor.Handle, id, f, (uint)vk); }
+      };
+      t.Start();
+    }
+
+    // Reasignacion: la tecla sola tiene como accion otra tecla sola (no un modificador ni el microfono)
+    static bool EsReasignacion(Accion a) {
+      if (a == null || a.Tipo != "atajo" || a.Teclas == null || a.Teclas.Length != 1 || a.Teclas[0] == Keys.MICRO) return false;
+      int vk = a.Teclas[0] & 0xFF;
+      return vk != 0x10 && vk != 0x11 && vk != 0x12 && vk != 0x5B;
+    }
+    // Tecla sin modificadores reasignada en algun perfil
+    static bool EsReasignada(int clave) {
+      if ((clave >> 16) != 0) return false;
+      Accion a;
+      if (general.Combos.TryGetValue(clave, out a) && EsReasignacion(a)) return true;
+      foreach (Perfil p in apps.Values) if (p.Combos.TryGetValue(clave, out a) && EsReasignacion(a)) return true;
+      return false;
     }
 
     class Receptor : NativeWindow {
       protected override void WndProc(ref Message m) {
-        int c;
-        if (m.Msg == WM_HOTKEY && claveDeId.TryGetValue(m.WParam.ToInt32(), out c)) { Disparar(c); return; }
+        int c, b, id = m.WParam.ToInt32();
+        if (m.Msg == WM_HOTKEY && claveDeId.TryGetValue(id, out c)) {
+          if (baseDeId.TryGetValue(id, out b)) DispararVariante(b, c & 0xFF); else Disparar(c);
+          return;
+        }
         base.WndProc(ref m);
       }
     }
 
-    static void Disparar(int clave) {
+    // Accion de la combinacion en la aplicacion de primer plano (o la general)
+    static Accion AccionDe(int clave) {
       string exe = Primerplano.Exe();
       Perfil app; Accion a = null;
       if (exe != "" && apps.TryGetValue(exe, out app)) app.Combos.TryGetValue(clave, out a);
       if (a == null) general.Combos.TryGetValue(clave, out a);
-      if (a == null || a.Tipo == "pasar") { Pasar(clave); return; }
+      return a;
+    }
+
+    static void Disparar(int clave) {
+      Accion a = AccionDe(clave);
+      // Sin accion en esta aplicacion: se le entrega la combinacion tal cual (los modificadores siguen pulsados)
+      if (a == null || a.Tipo == "pasar") { EnviarTecla(clave & 0xFF); return; }
+      if ((clave >> 16) == 0 && EsReasignacion(a)) { EnviarTecla(a.Teclas[0]); return; }
       SoltarModificadores(clave);
       Ejecutor.Ejecutar(a);
     }
 
-    // Sin accion en esta aplicacion: se le entrega la combinacion tal cual (los modificadores siguen pulsados)
-    static void Pasar(int clave) {
-      int id;
-      if (!idDeClave.TryGetValue(clave, out id)) return;
-      UnregisterHotKey(receptor.Handle, id);
-      Keys.SendCombo(new int[] { clave & 0xFF });
-      System.Windows.Forms.Timer t = new System.Windows.Forms.Timer();
-      t.Interval = 80;
-      t.Tick += delegate {
-        t.Stop(); t.Dispose();
-        if (activo && claveDeId.ContainsKey(id)) RegisterHotKey(receptor.Handle, id, (uint)(clave >> 16) | 0x4000, (uint)(clave & 0xFF));
-      };
-      t.Start();
+    // Tecla reasignada pulsada con modificadores: siguen pulsados y se aplican a la tecla nueva (Mayus+0xDC -> Mayus+0xE2).
+    // Si en esta aplicacion no se reasigna, sale la tecla original.
+    static void DispararVariante(int clave, int vk) {
+      Accion a = AccionDe(clave);
+      EnviarTecla(EsReasignacion(a) ? a.Teclas[0] : vk);
     }
+
+    // Envia la tecla (SendCombo libera antes nuestras combinaciones con ella: ver AntesDeEnviar)
+    static void EnviarTecla(int k) { Keys.SendCombo(new int[] { k }); }
 
     // Antes de ejecutar la accion se sueltan los modificadores de la combinacion, para que no se mezclen con ella.
     // La tecla 0xE8 (sin uso) evita que soltar Alt o Win abra el menu de la ventana o el menu Inicio.
@@ -3048,6 +3153,12 @@ namespace LogiRaton {
     public static void EnUI(MethodInvoker accion) {
       Iniciar();
       if (form != null) form.BeginInvoke(accion);
+    }
+    // Igual, pero espera (como mucho ms) a que se haya hecho
+    public static void EnUIEsperando(MethodInvoker accion, int ms) {
+      Iniciar();
+      if (form == null) return;
+      try { form.BeginInvoke(accion).AsyncWaitHandle.WaitOne(ms); } catch { }
     }
 
     // Abre la ventana ya fija (se elige con un clic), por ejemplo desde un gesto.

@@ -427,7 +427,8 @@ function Convertir-Combinaciones($lista, $perfil, $errores, [string]$ambito) {
                 if ($a) { $perfil.CombosRueda[$clave] = $a }
             } else {
                 # Tecla (atajo global)
-                $clave = [LogiRaton.Combinaciones]::Clave($teclas)
+                # Una tecla sola que escribe solo vale si su accion es otra tecla (se reasigna)
+                $clave = [LogiRaton.Combinaciones]::Clave($teclas, ([string]$c.accion -eq 'atajo'))
                 if ($perfil.Combos.ContainsKey($clave)) { throw 'Combinacion repetida en este perfil' }
                 if ($c.accion -eq 'defecto') { $a = New-Object LogiRaton.Accion; $a.Tipo = 'pasar' }
                 else { $a = Accion-Desde $c $errores $donde }
@@ -846,6 +847,12 @@ function Atender($ctx) {
             if ($on) { [void](New-Item -ItemType File $bgFile -Force); [LogiRaton.Consola]::Ocultar(); Log 'Ventana en segundo plano' }
             else { if (Test-Path $bgFile) { Remove-Item $bgFile }; [LogiRaton.Consola]::Mostrar(); Log 'Ventana visible' }
             Responder $ctx 200 (Json @{ ok = $true; segundoPlano = (Test-Path $bgFile) })
+        }
+        'POST /api/capturar' {
+            # La web va a capturar una tecla: se sueltan las combinaciones mientras (se reanudan solas a los 30 s)
+            $si = [bool]((Leer-Cuerpo $req) | ConvertFrom-Json).si
+            [LogiRaton.Combinaciones]::Suspender($si)
+            Responder $ctx 200 (Json @{ ok = $true })
         }
         'POST /api/bandeja' {
             # Muestra u oculta el icono de bandeja de un periferico (raton o teclado)
