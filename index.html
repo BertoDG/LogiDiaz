@@ -117,6 +117,30 @@
   .filaAccion select { min-width: 220px; max-width: 320px; }
   .ladoAccion { display: inline-flex; align-items: center; gap: 8px; min-width: 0; }
   .ladoAccion:empty { display: none; }
+  /* Copiar / pegar acción: par de botones con el aspecto de los segmentados pequeños (icono + texto; en las filas
+     estrechas de pulsaciones y combinaciones, solo el icono, junto al botón de quitar) */
+  .finFila { display: inline-flex; align-items: center; gap: 6px; }
+  .copiaAccion.seg.peq button { display: inline-flex; align-items: center; gap: 6px; }
+  .copiaAccion .glifo { font-size: 14px; }
+  .copiaAccion button:disabled, .copiaAccion button:disabled:hover { opacity: .45; cursor: default; background: transparent; color: var(--muted); }
+  .finFila .copiaAccion .txtCopia { display: none; }
+  /* Diálogo de confirmación propio */
+  .dlgFondo { position: fixed; inset: 0; z-index: 1000; display: flex; align-items: center; justify-content: center; padding: 16px;
+              background: rgba(10, 14, 20, .45); animation: dlgEntra .12s ease-out; }
+  .dlgFondo.saliendo { opacity: 0; transition: opacity .12s; }
+  .dlg { width: min(440px, 100%); background: var(--card); color: var(--text); border: 1px solid var(--line); border-radius: 12px;
+         padding: 18px 20px 16px; box-shadow: 0 18px 50px rgba(0, 0, 0, .35); animation: dlgSube .14s ease-out; }
+  .dlgTitulo { margin: 0 0 6px; font-size: 16px; font-weight: 600; }
+  .dlgMensaje { margin: 0; overflow-wrap: anywhere; }
+  .dlgDetalle { margin: 8px 0 0; color: var(--muted); font-size: 13px; }
+  .dlgBotones { display: flex; justify-content: flex-end; gap: 8px; margin-top: 18px; }
+  .dlgBotones button { min-width: 96px; padding: 6px 14px; }
+  .dlgBotones button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  button.dlgPeligro { background: var(--err); border-color: var(--err); color: #fff; }
+  :root[data-theme="dark"] button.dlgPeligro { color: #1b1f26; }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) button.dlgPeligro { color: #1b1f26; } }
+  @keyframes dlgEntra { from { opacity: 0; } }
+  @keyframes dlgSube { from { transform: translateY(8px); opacity: 0; } }
   .ladoAccion select { min-width: 0; }
   /* Formato de una acción de lista: Lista / Rejilla + «Personalizar estética» con las mismas filas que la pestaña Listas */
   .formatoAccion { display: inline-flex; align-items: center; gap: 8px; flex-wrap: wrap; }
@@ -377,6 +401,15 @@
   .muestraLista .mIcono { width: 20px; text-align: center; font-family: "Segoe Fluent Icons", "Segoe MDL2 Assets", "Segoe UI Emoji"; font-size: 16px; }
   .muestraLista .mNombre { flex: 1 1 auto; overflow: hidden; text-overflow: ellipsis; }
   .muestraLista .mDetalle { flex: 0 1 auto; overflow: hidden; text-overflow: ellipsis; font-size: .85em; }
+  /* Vista previa de la rejilla circular: anillo en SVG y el contenido de cada gajo encima */
+  .muestraCircular { position: relative; flex: 0 0 auto; font-family: "Segoe UI", system-ui, sans-serif;
+                     filter: drop-shadow(0 6px 14px rgba(0, 0, 0, .35)); }
+  .muestraCircular svg { position: absolute; inset: 0; }
+  .muestraCircular .cCelda { position: absolute; display: flex; flex-direction: column; align-items: center; gap: 4px;
+                             text-align: center; pointer-events: none; }
+  .muestraCircular .mIcono { display: block; text-align: center; font-family: "Segoe Fluent Icons", "Segoe MDL2 Assets", "Segoe UI Emoji"; }
+  .muestraCircular .cNombre { display: -webkit-box; -webkit-box-orient: vertical; overflow: hidden; max-width: 100%; }
+  .muestraCircular .cDetalle { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
   .chip { padding: 4px 10px; border-radius: 14px; border: 1px solid var(--line); cursor: pointer; font-size: 12.5px; }
   .chip.on { background: var(--ok); color: var(--card); border-color: var(--ok); }
@@ -480,6 +513,21 @@
   .pastilla.sel { background: var(--accent); color: var(--accent-text); }
   .pastilla.mas { background: transparent; border: 1px dashed var(--line); color: var(--muted); font-weight: 500; }
   .pastilla.mas:hover { color: var(--text); border-color: var(--accent); }
+  /* Elegir el programa de un perfil: campo con buscador y su desplegable (abiertos, usados hace poco, instalados) */
+  .selPrograma { position: relative; display: inline-block; }
+  .selPrograma input { width: 260px; }
+  .listaProgramas { position: absolute; top: calc(100% + 4px); left: 0; z-index: 50; width: max(100%, 360px); max-height: 340px;
+                    overflow-y: auto; padding: 4px; background: var(--card); border: 1px solid var(--line); border-radius: 8px;
+                    box-shadow: 0 8px 24px rgba(0, 0, 0, .25); }
+  .listaProgramas[hidden] { display: none; }
+  .grupoProgramas { padding: 6px 8px 3px; font-size: 11.5px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .03em; }
+  .filaPrograma { display: flex; align-items: baseline; gap: 10px; padding: 5px 8px; border-radius: 5px; cursor: pointer; }
+  .filaPrograma:hover { background: var(--code); }
+  .filaPrograma.activa { background: var(--accent); color: var(--accent-text); }
+  .nomPrograma { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .exePrograma { flex: 0 0 auto; font-size: 12px; color: var(--muted); }
+  .filaPrograma.activa .exePrograma { color: inherit; opacity: .8; }
+  .errorProgramas { margin: 4px; padding: 6px 8px; border-radius: 6px; font-size: 12.5px; color: var(--err); border: 1px solid currentColor; }
 
   /* ---- Controles con el estilo de la app (en vez de los del navegador) ---- */
   /* Desplegables: flecha propia */
@@ -627,7 +675,6 @@
   </div>
   <div class="configScroll" id="configScroll">
   <div id="banner"></div>
-  <datalist id="dlApps"></datalist>
 
   <div class="pane" id="paneTeclado">
     <div class="card">
@@ -831,6 +878,22 @@
         <div class="muestraFondo"><div class="muestraLista" id="muestraRejilla"></div></div>
       </div>
     </div>
+
+    <div class="card">
+      <h2>Rejillas circulares</h2>
+      <div class="conEjemplo">
+        <div>
+          <table class="opcEstilo"><tbody id="lsOpcCircular"></tbody></table>
+          <div class="row" style="margin-top:10px"><button id="btnProbarCircular">Probar rejilla circular en pantalla</button></div>
+          <p class="note ayuda">Las opciones se reparten alrededor del cursor, como la rueda de gestos: la primera arriba y las demás en el
+            sentido de las agujas del reloj. <b>Manteniendo</b> el botón, mueve el cursor hacia una opción y suelta (cuenta la dirección,
+            aunque salgas del círculo); soltar en el hueco del centro cancela. Con una <b>pulsación corta</b> se queda abierta: haz clic en
+            una opción; pinchar fuera del anillo o en el hueco la cierra. El tamaño del círculo se ajusta al de los iconos. Caben hasta 12 opciones (si hay más, se muestran las 12 primeras). Usa el tema, el color,
+            la opacidad, la letra y el espaciado del aspecto general; el difuminado y las esquinas no se aplican.</p>
+        </div>
+        <div class="muestraFondo"><div id="muestraCircular"></div></div>
+      </div>
+    </div>
   </div>
 
   <div class="pane hidden" id="paneAjustes">
@@ -1001,6 +1064,47 @@ function configVacia() {
 }
 const est = d => (estado && estado[d]) || null;
 
+// Diálogo de confirmación propio (en vez del confirm() del navegador), con la estética de la página.
+// opciones: titulo, mensaje, detalle (segunda línea, más suave), aceptar (texto del botón), cancelar, peligro (botón en rojo).
+// Devuelve una promesa: true si se acepta. Enter acepta, Esc o clic fuera cancelan; el foco vuelve a donde estaba.
+function confirmar({ titulo = 'Confirmar', mensaje = '', detalle = '', aceptar = 'Aceptar', cancelar = 'Cancelar', peligro = false } = {}) {
+  return new Promise(resolver => {
+    const previo = document.activeElement;
+    const fondo = document.createElement('div'); fondo.className = 'dlgFondo';
+    const dlg = document.createElement('div'); dlg.className = 'dlg'; dlg.setAttribute('role', 'alertdialog'); dlg.setAttribute('aria-modal', 'true');
+    const h = document.createElement('h3'); h.className = 'dlgTitulo'; h.id = 'dlgTitulo'; h.textContent = titulo;
+    const p = document.createElement('p'); p.className = 'dlgMensaje'; p.id = 'dlgMensaje'; p.textContent = mensaje;
+    dlg.setAttribute('aria-labelledby', 'dlgTitulo'); dlg.setAttribute('aria-describedby', 'dlgMensaje');
+    dlg.append(h, p);
+    if (detalle) { const n = document.createElement('p'); n.className = 'dlgDetalle'; n.textContent = detalle; dlg.appendChild(n); }
+    const botones = document.createElement('div'); botones.className = 'dlgBotones';
+    const bNo = document.createElement('button'); bNo.type = 'button'; bNo.textContent = cancelar;
+    const bSi = document.createElement('button'); bSi.type = 'button'; bSi.textContent = aceptar;
+    bSi.className = peligro ? 'dlgPeligro' : 'primary';
+    botones.append(bNo, bSi); dlg.appendChild(botones);
+    fondo.appendChild(dlg); document.body.appendChild(fondo);
+    const cerrar = v => {
+      document.removeEventListener('keydown', teclas, true);
+      fondo.classList.add('saliendo');
+      setTimeout(() => fondo.remove(), 120);
+      if (previo && previo.focus) previo.focus();
+      resolver(v);
+    };
+    const teclas = e => {
+      if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); cerrar(false); }
+      else if (e.key === 'Enter' && document.activeElement !== bNo) { e.preventDefault(); e.stopPropagation(); cerrar(true); }
+      else if (e.key === 'Tab') {                                // el foco no sale del diálogo
+        e.preventDefault(); (document.activeElement === bSi ? bNo : bSi).focus();
+      }
+    };
+    document.addEventListener('keydown', teclas, true);
+    bNo.addEventListener('click', () => cerrar(false));
+    bSi.addEventListener('click', () => cerrar(true));
+    fondo.addEventListener('mousedown', e => { if (e.target === fondo) cerrar(false); });
+    // Con peligro el foco va a Cancelar (Enter no borra nada por descuido); si no, a Aceptar
+    setTimeout(() => (peligro ? bNo : bSi).focus());
+  });
+}
 function aviso(msg, cls) {
   const line = document.createElement('div');
   if (cls) line.className = cls;
@@ -1130,7 +1234,8 @@ function describir(d, a) {
   if (extra) return describir(d, a.accion ? Object.assign({}, a, { pulsaciones: null }) : null) + extra;
   if (a.accion === 'atajo') return a.atajo || '(atajo vacío)';
   if (a.accion === 'gestos') return 'gestos';
-  const formato = a.disposicion === 'rejilla' ? ' en rejilla' : a.disposicion === 'lista' ? ' en lista' : '';
+  const formato = a.disposicion === 'rejilla' ? ' en rejilla' : a.disposicion === 'circular' ? ' en círculo'
+                : a.disposicion === 'lista' ? ' en lista' : '';
   if (a.accion === 'menu') return `lista de opciones (${(a.opciones || []).length})${formato}`;
   if (a.accion === 'texto') { const t = (a.texto || '').replace(/\s+/g, ' ').trim(); return `plantilla «${t.length > 30 ? t.slice(0, 30) + '…' : t}»`; }
   if (a.accion === 'ejecutar') return 'ejecutar ' + (a.comando || '');
@@ -1377,26 +1482,25 @@ function renderPerfiles(d) {
   pastillas.appendChild(mas);
   cont.appendChild(pastillas);
   if (anadiendoPerfil[d]) {
-    const inp = document.createElement('input');
-    inp.type = 'text'; inp.placeholder = 'programa.exe'; inp.setAttribute('list', 'dlApps'); inp.style.width = '170px';
-    const add = document.createElement('button'); add.type = 'button'; add.className = 'primary'; add.textContent = 'Añadir';
-    const anadir = () => {
-      let n = inp.value.trim().toLowerCase();
+    const anadir = texto => {
+      let n = (texto || '').trim().toLowerCase();
       if (!n) return;
       if (!n.endsWith('.exe')) n += '.exe';
       if (!/^[\w.\- ]+\.exe$/.test(n)) { aviso('Nombre de programa no válido: ' + n, 'err'); return; }
       anadiendoPerfil[d] = false;
       botonesDe(d, n); perfilSel[d] = n; marcarCambios(); renderPerfiles(d); renderBotones(d);
     };
-    add.addEventListener('click', anadir);
-    inp.addEventListener('keydown', e => { if (e.key === 'Enter') anadir(); if (e.key === 'Escape') { anadiendoPerfil[d] = false; renderPerfiles(d); } });
-    cont.append(inp, add);
-    setTimeout(() => inp.focus());
+    const sp = selectorPrograma(d, anadir, () => { anadiendoPerfil[d] = false; renderPerfiles(d); });
+    const add = document.createElement('button'); add.type = 'button'; add.className = 'primary'; add.textContent = 'Añadir';
+    add.addEventListener('click', () => sp.aceptar());
+    cont.append(sp, add);
+    setTimeout(() => sp.input.focus());
   }
   if (perfilSel[d]) {
     const quitar = document.createElement('button'); quitar.type = 'button'; quitar.className = 'danger fantasma'; quitar.textContent = 'Quitar perfil';
-    quitar.addEventListener('click', () => {
-      if (!confirm(`¿Quitar el perfil de ${perfilSel[d]}?`)) return;
+    quitar.addEventListener('click', async () => {
+      if (!await confirmar({ titulo: 'Quitar perfil', mensaje: `¿Quitar el perfil de ${perfilSel[d]}? Se pierde lo configurado para esa aplicación.`,
+                             aceptar: 'Quitar perfil', peligro: true })) return;
       delete config[d].aplicaciones[perfilSel[d]]; perfilSel[d] = ''; marcarCambios(); renderPerfiles(d); renderBotones(d);
     });
     cont.appendChild(quitar);
@@ -1412,9 +1516,114 @@ function ayudaPerfil(d) {
   $('perfilAyuda-' + d).textContent = ayuda;
   const elegida = $('perfiles-' + d).querySelector('.pastilla.sel');
   if (elegida) elegida.title = ayuda;
-  const ya = new Set([...Object.keys(config.raton.aplicaciones), ...Object.keys(config.teclado.aplicaciones)]);
-  const rec = new Set([...((est('raton') || {}).recientes || []), ...((est('teclado') || {}).recientes || [])]);
-  $('dlApps').innerHTML = [...rec].filter(a => !ya.has(a)).map(a => `<option value="${a}">`).join('');
+}
+// Programas para el perfil de una aplicación: los pide al servidor (instalados del menú Inicio y abiertos ahora)
+// la primera vez que se abre el desplegable; el servidor guarda los instalados unos minutos.
+let programas = null, pidiendoProgramas = null, errorProgramas = '';
+function cargarProgramas() {
+  if (!pidiendoProgramas)
+    pidiendoProgramas = api('/api/programas')
+      .then(r => { programas = (r && r.programas) || []; errorProgramas = ''; return programas; })
+      .catch(e => {
+        // Un servidor arrancado antes de esta versión no conoce la consulta (404): hay que reiniciarlo
+        errorProgramas = /no encontr|not found|404/i.test(e.message)
+          ? 'El servidor en marcha es de una versión anterior: ciérralo (menú ⏻) y vuelve a abrir iniciar.cmd para ver los programas instalados.'
+          : 'No se pudo leer la lista de programas instalados: ' + e.message;
+        aviso(errorProgramas, 'err');
+        return programas || [];
+      })
+      .finally(() => { pidiendoProgramas = null; });
+  return pidiendoProgramas;
+}
+// Desplegable con buscador para elegir el programa de un perfil: abiertos ahora, usados hace poco (detectados al
+// pulsar) e instalados. Escribir filtra por nombre o por .exe; también se puede escribir a mano cualquier programa.exe.
+// ↑/↓ eligen, Enter añade (lo elegido o lo escrito), Esc cancela. Los programas que ya tienen perfil no salen.
+function selectorPrograma(d, alElegir, alCancelar) {
+  const cont = document.createElement('span'); cont.className = 'selPrograma';
+  const inp = document.createElement('input');
+  inp.type = 'text'; inp.placeholder = 'Busca o escribe programa.exe'; inp.autocomplete = 'off'; inp.spellcheck = false;
+  inp.setAttribute('role', 'combobox'); inp.setAttribute('aria-expanded', 'false');
+  const lista = document.createElement('div'); lista.className = 'listaProgramas'; lista.hidden = true; lista.setAttribute('role', 'listbox');
+  cont.append(inp, lista);
+  let filas = [], activa = -1, cargando = false;
+  const elementos = () => {
+    const ya = new Set(Object.keys(config[d].aplicaciones));
+    const todos = (programas || []).filter(p => !ya.has(p.exe));
+    const porExe = new Map(todos.map(p => [p.exe, p]));
+    const recientes = [...new Set([...((est(d) || {}).recientes || []), ...((est(d === 'raton' ? 'teclado' : 'raton') || {}).recientes || [])])]
+      .map(e => String(e).toLowerCase()).filter(e => !ya.has(e));
+    // Busca por nombre o por el .exe sin la extensión (si no, «ex» encajaría con todos)
+    const q = sinAcentos(inp.value.trim()).replace(/\.exe$/, '');
+    const encaja = p => !q || sinAcentos(p.nombre).includes(q) || p.exe.replace(/\.exe$/, '').includes(q);
+    const grupos = [
+      ['Abiertos ahora', todos.filter(p => p.abierto)],
+      ['Usados hace poco', recientes.filter(e => !(porExe.get(e) || {}).abierto).map(e => porExe.get(e) || { exe: e, nombre: '' })],
+      ['Instalados', todos.filter(p => !p.abierto && !recientes.includes(p.exe))],
+    ].map(([t, ps]) => [t, ps.filter(encaja)]).filter(([, ps]) => ps.length);
+    // Lo escrito a mano, si no es exactamente uno de la lista: al final (Enter elige antes lo que coincida)
+    let escrito = inp.value.trim().toLowerCase();
+    if (escrito && !escrito.endsWith('.exe')) escrito += '.exe';
+    const enLista = grupos.some(([, ps]) => ps.some(p => p.exe === escrito));
+    if (escrito && !enLista && !ya.has(escrito)) grupos.push(['Escrito a mano', [{ exe: escrito, nombre: '', aMano: true }]]);
+    return grupos;
+  };
+  const pintarActiva = () => {
+    filas.forEach((f, i) => f.classList.toggle('activa', i === activa));
+    if (filas[activa]) filas[activa].scrollIntoView({ block: 'nearest' });
+  };
+  const pintar = () => {
+    lista.innerHTML = ''; filas = [];
+    if (errorProgramas && !programas) {
+      const aviso = document.createElement('div'); aviso.className = 'errorProgramas'; aviso.textContent = errorProgramas;
+      lista.appendChild(aviso);
+    }
+    const grupos = elementos();
+    for (const [titulo, ps] of grupos) {
+      const t = document.createElement('div'); t.className = 'grupoProgramas'; t.textContent = titulo;
+      lista.appendChild(t);
+      for (const p of ps) {
+        const f = document.createElement('div'); f.className = 'filaPrograma'; f.setAttribute('role', 'option');
+        const nom = document.createElement('span'); nom.className = 'nomPrograma';
+        nom.textContent = p.aMano ? `Añadir «${p.exe}»` : (p.nombre || p.exe);
+        const exe = document.createElement('span'); exe.className = 'exePrograma'; exe.textContent = p.aMano || !p.nombre ? '' : p.exe;
+        f.append(nom, exe);
+        f.addEventListener('mousedown', e => e.preventDefault());        // no quita el foco al campo
+        f.addEventListener('click', () => alElegir(p.exe));
+        f.dataset.exe = p.exe;
+        lista.appendChild(f); filas.push(f);
+      }
+    }
+    if (!filas.length) {
+      const v = document.createElement('div'); v.className = 'grupoProgramas';
+      v.textContent = cargando ? 'Buscando programas…' : 'No hay programas que coincidan: escribe el nombre del .exe';
+      lista.appendChild(v);
+    }
+    activa = filas.length ? Math.min(Math.max(activa, 0), filas.length - 1) : -1;
+    pintarActiva();
+  };
+  const abrir = () => {
+    lista.hidden = false; inp.setAttribute('aria-expanded', 'true');
+    if (!programas) {
+      cargando = true; pintar();
+      cargarProgramas().then(() => { cargando = false; if (!lista.hidden) pintar(); });
+    } else pintar();
+  };
+  const cerrar = () => { lista.hidden = true; inp.setAttribute('aria-expanded', 'false'); };
+  cont.aceptar = () => { if (!lista.hidden && filas[activa]) alElegir(filas[activa].dataset.exe); else alElegir(inp.value); };
+  cont.input = inp;
+  inp.addEventListener('focus', abrir);
+  inp.addEventListener('click', () => { if (lista.hidden) abrir(); });
+  inp.addEventListener('input', () => { activa = 0; if (lista.hidden) abrir(); else pintar(); });
+  inp.addEventListener('blur', cerrar);
+  inp.addEventListener('keydown', e => {
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+      e.preventDefault();
+      if (lista.hidden) { abrir(); return; }
+      if (filas.length) { activa = (activa + (e.key === 'ArrowDown' ? 1 : -1) + filas.length) % filas.length; pintarActiva(); }
+    } else if (e.key === 'Enter') { e.preventDefault(); cont.aceptar(); }
+    else if (e.key === 'Escape') { e.preventDefault(); if (!lista.hidden && inp.value) cerrar(); else alCancelar(); }
+  });
+  return cont;
 }
 
 // ---------------------------------------------------------------- Editor de un atajo (las teclas se añaden como piezas)
@@ -1649,6 +1858,9 @@ const SIMBOLOS = [
   ['E711', 'Cancelar'], ['E73E', 'Aceptar'], ['E72C', 'Actualizar'], ['E72B', 'Atrás'], ['E72A', 'Adelante'], ['E700', 'Menú'],
   ['E946', 'Información'], ['E7BA', 'Aviso'], ['E734', 'Favorito'], ['E8EC', 'Etiqueta'], ['E72E', 'Candado'], ['E943', 'Código'],
   ['E756', 'Consola'], ['E770', 'Equipo'], ['E8EF', 'Calculadora'], ['E7E8', 'Apagar'], ['E71C', 'Filtro'], ['E8CB', 'Ordenar'],
+  // Capturas de pantalla (están también en Segoe MDL2 Assets, la fuente de Windows 10)
+  ['E924', 'Recorte de pantalla'], ['F406', 'Captura de pantalla'], ['E7F4', 'Pantalla completa'], ['EF20', 'Seleccionar zona'],
+  ['E8AC', 'Texto de la imagen (OCR)'], ['E7A8', 'Recortar'], ['EB9F', 'Imagen'], ['EF3C', 'Cuentagotas (color)'], ['E790', 'Paleta de colores'],
 ];
 function vistaIcono(spec) {
   if (!spec) return '<span class="iconoAuto">auto</span>';
@@ -1774,6 +1986,12 @@ function editorLista(opciones) {
 // ---------------------------------------------------------------- Editor de una acción (botón o dirección de gesto)
 // cfg: obtener() / poner(v) de la acción, vacio (texto de la opción neutra), desviable, gestos, destinos,
 //      defecto (ofrecer "De fábrica"), notaVacio() y d (dispositivo, para los nombres de los botones)
+//      ajenos: campos del objeto que no son de la acción (p. ej. las pulsaciones extra del botón): no se copian
+// Acción copiada con «Copiar acción» para pegarla en otro botón, gesto, pulsación o combinación.
+// Es una copia independiente ({ accion, d }): lo que se cambie después en el original no le afecta.
+// Vive mientras la página esté abierta (sobrevive a los repintados y al cambio de perfil o de pestaña).
+let accionCopiada = null;
+const pintarBotonesPegar = () => { for (const b of document.querySelectorAll('.btnPegarAccion')) b.pintar(); };
 function opcionesAccion(cfg) {
   const ops = [];
   if (cfg.desviable) ops.push(['atajo', 'Atajo de teclado'], ['menu', 'Lista de opciones'], ['ventanas', 'Lista de programas abiertos'],
@@ -1809,9 +2027,9 @@ function segmentado(opciones, activo, cambiar, minimo = 0) {
   cont.pintar = pintar;
   return cont;
 }
-// Formato de una acción de tipo lista: se elige Lista o Rejilla y, con «Personalizar estética», las mismas opciones
+// Formato de una acción de tipo lista: se elige Lista, Rejilla o Circular y, con «Personalizar estética», las mismas opciones
 // que en la pestaña Listas (opcionesEstilo) solo para esta acción. Sin personalizar, usa las de la pestaña.
-// Campos de la acción: disposicion (lista / rejilla) y, si está personalizada, mostrar { icono, etiqueta, contenido },
+// Campos de la acción: disposicion (lista / rejilla / circular) y, si está personalizada, mostrar { icono, etiqueta, contenido },
 // icono (px) y columnas (rejilla).
 const esteticaAbierta = new WeakMap();                 // panel abierto o no de cada acción (sobrevive a los repintados)
 function selectorFormatoLista(act) {
@@ -1830,12 +2048,12 @@ function selectorFormatoLista(act) {
     panel.innerHTML = '';
     if (!personalizada()) { panel.hidden = true; pintarBoton(); return; }
     // Lo que falte (p. ej. configuraciones antiguas con solo el tamaño) se completa con lo de la pestaña Listas
-    const e = estiloDe(general(), disposicion() === 'rejilla');
+    const e = estiloDe(general(), disposicion());
     if (!act.mostrar) act.mostrar = e.mostrar;
     if (!act.icono) act.icono = e.icono;
     const tabla = document.createElement('table'); tabla.className = 'opcEstilo';
     const cuerpo = document.createElement('tbody');
-    cuerpo.append(...opcionesEstilo(disposicion() === 'rejilla', act, marcarCambios));
+    cuerpo.append(...opcionesEstilo(disposicion(), act, marcarCambios));
     tabla.appendChild(cuerpo);
     const quitar = document.createElement('button'); quitar.type = 'button';
     quitar.textContent = 'Quitar personalización (usar la de la pestaña Listas/Rejillas)';
@@ -1846,7 +2064,7 @@ function selectorFormatoLista(act) {
     panel.append(tabla, quitar);
     pintarBoton();
   };
-  const seg = segmentado([['lista', 'Lista'], ['rejilla', 'Rejilla']], k => disposicion() === k,
+  const seg = segmentado(DISPOSICIONES, k => disposicion() === k,
     (k, v) => {
       if (!v) return;
       act.disposicion = k;
@@ -1855,8 +2073,8 @@ function selectorFormatoLista(act) {
     }, 1);
   boton.addEventListener('click', () => {
     if (!personalizada()) {
-      // Se parte de la estética de la pestaña Listas para lo que vaya a ser (lista o rejilla)
-      const e = estiloDe(general(), disposicion() === 'rejilla');
+      // Se parte de la estética de la pestaña Listas para lo que vaya a ser (lista, rejilla o circular)
+      const e = estiloDe(general(), disposicion());
       act.mostrar = e.mostrar; act.icono = e.icono;
       if (disposicion() === 'rejilla') act.columnas = e.columnas || 0;
       panel.hidden = false; marcarCambios();
@@ -2124,12 +2342,64 @@ function editorAccion(cfg) {
       case '': if (cfg.notaVacio) det.innerHTML = cfg.notaVacio(); break;
     }
   };
+  // Copiar / pegar la acción entera (con todo su detalle: opciones de una lista, pasos de una macro, gestos…)
+  const copia = document.createElement('span'); copia.className = 'copiaAccion seg peq';
+  const btnCopia = (glifo, texto, clase) => {
+    const b = document.createElement('button'); b.type = 'button'; b.className = clase;
+    b.innerHTML = `<span class="glifo" aria-hidden="true">&#x${glifo};</span><span class="txtCopia">${texto}</span>`;
+    b.setAttribute('aria-label', texto + ' acción');
+    return b;
+  };
+  const copiar = btnCopia('E8C8', 'Copiar', 'btnCopiarAccion'), pegar = btnCopia('E77F', 'Pegar', 'btnPegarAccion');
+  const pintarCopiar = () => {
+    const a = cfg.obtener();
+    copiar.disabled = !(a && a.accion);
+    copiar.title = copiar.disabled ? 'Copiar acción (no hay ninguna)' : `Copiar acción: ${describir(cfg.d, a)}`;
+  };
+  // Por qué no se puede pegar aquí lo copiado ('' si se puede)
+  const motivoNoPegar = () => {
+    if (!accionCopiada) return 'no hay ninguna acción copiada';
+    const v = accionCopiada.accion;
+    if (!opcionesAccion(cfg).some(([k]) => k && k === v.accion)) return 'esa acción no está disponible aquí';
+    if (v.accion === 'boton' && !cfg.destinos.includes(cidDe(v.boton))) return `aquí no se puede actuar como ${nombre(accionCopiada.d, cidDe(v.boton))}`;
+    return '';
+  };
+  pegar.pintar = () => {
+    const motivo = motivoNoPegar();
+    pegar.disabled = !!motivo;
+    pegar.title = motivo ? `Pegar acción (${motivo})` : `Pegar acción: ${describir(accionCopiada.d, accionCopiada.accion)}`;
+  };
+  copiar.addEventListener('click', () => {
+    const a = cfg.obtener();
+    if (!a || !a.accion) return;
+    const c = JSON.parse(JSON.stringify(a));
+    for (const k of cfg.ajenos || []) delete c[k];
+    accionCopiada = { accion: c, d: cfg.d };
+    aviso(`Acción copiada: ${describir(cfg.d, c)}. Abre otro botón, gesto o combinación y pulsa Pegar acción.`);
+    pintarBotonesPegar();
+  });
+  pegar.addEventListener('click', async () => {
+    if (motivoNoPegar()) return;
+    const actual = cfg.obtener(), nueva = JSON.parse(JSON.stringify(accionCopiada.accion));
+    if (actual && actual.accion &&
+        !await confirmar({ titulo: 'Pegar acción', mensaje: `¿Sustituir «${describir(cfg.d, actual)}» por «${describir(accionCopiada.d, nueva)}»?`,
+                           aceptar: 'Sustituir' })) return;
+    cfg.poner(nueva);
+    sel.value = nueva.accion;
+    pintar(); pintarCopiar(); marcarCambios();
+    // Tras confirmar (asíncrono) el clic ya pasó: se avisa para que se repinte el resumen del botón o del gesto
+    copia.dispatchEvent(new Event('change', { bubbles: true }));
+  });
+  copiar.addEventListener('mouseenter', pintarCopiar);       // el resumen del título, al día con lo último editado
+  pegar.addEventListener('mouseenter', pegar.pintar);
+  copia.append(copiar, pegar);
+  pegar.pintar();
   sel.addEventListener('change', () => {
     cfg.poner(accionInicial(sel.value, cfg.obtener() || {}, cfg.destinos));
-    pintar(); marcarCambios();
+    pintar(); pintarCopiar(); marcarCambios();
   });
-  pintar();
-  return { sel, det, lado };
+  pintar(); pintarCopiar();
+  return { sel, det, lado, copia };
 }
 // Acción recién elegida en un desplegable: sus valores de partida (conservando lo que sirva de la anterior, prev)
 function accionInicial(v, prev, destinos = []) {
@@ -2192,7 +2462,7 @@ function editorGestos(act, d) {
       ficha.title = `${dir === 'clic' ? 'Pulsar sin mover' : txt}: ${res.textContent}`;
       ficha.classList.toggle('conAccion', hay); linea.classList.toggle('con', hay);
     };
-    const { sel, det, lado } = editorAccion({
+    const { sel, det, lado, copia } = editorAccion({
       obtener: () => act.gestos[dir],
       poner: v => { if (v) act.gestos[dir] = v; else delete act.gestos[dir]; },
       vacio: 'Nada', desviable: true, gestos: false, defecto: false, d,
@@ -2202,7 +2472,7 @@ function editorGestos(act, d) {
     const tit = document.createElement('div'); tit.className = 'tituloGesto'; tit.textContent = 'Gesto: ' + txt;
     const fila = document.createElement('div'); fila.className = 'filaAccion';
     const etiq = document.createElement('span'); etiq.className = 'note'; etiq.textContent = 'Acción';
-    fila.append(etiq, sel, lado);
+    fila.append(etiq, sel, lado, copia);
     ed.append(tit, fila, det);
     for (const ev of ['input', 'change', 'click']) ed.addEventListener(ev, () => setTimeout(pintarRes));
     ficha.addEventListener('click', () => elegir(dir));
@@ -2418,7 +2688,7 @@ function renderBotones(d) {
     };
     // En un perfil de aplicación el servidor imita el botón; en General lo hace el propio dispositivo
     const destinos = (esApp ? (d === 'raton' && b.desviable ? EMULABLES : []) : (b.destinos || [])).filter(x => x !== b.cid);
-    const { sel, det, lado } = editorAccion({
+    const { sel, det, lado, copia } = editorAccion({
       // La acción principal convive con las pulsaciones extra del mismo botón
       obtener: () => bot[key] && bot[key].accion ? bot[key] : undefined,
       poner: v => {
@@ -2430,6 +2700,7 @@ function renderBotones(d) {
       },
       vacio, desviable: b.desviable, gestos: b.gestos, destinos, defecto: esApp && d === 'raton', d,
       notaVacio: esApp ? () => `<span class="note">General: ${describir(d, config[d].botones[key])}</span>` : null,
+      ajenos: ['pulsaciones'],
     });
     const editor = document.createElement('div');
     editor.className = 'editorBoton'; editor.dataset.key = key; editor.hidden = true;
@@ -2437,7 +2708,7 @@ function renderBotones(d) {
     titulo.innerHTML = `${nombre(d, b.cid)} <span class="hex">${key}</span>`;
     const filaAcc = document.createElement('div'); filaAcc.className = 'filaAccion';
     const etiq = document.createElement('span'); etiq.className = 'note'; etiq.textContent = 'Acción';
-    filaAcc.append(etiq, sel, lado);
+    filaAcc.append(etiq, sel, lado, copia);
     // Pulsaciones extra (doble clic, pulsación larga), salvo con gestos: mantener ya es el gesto
     const extra = document.createElement('div'); extra.className = 'pulsExtra';
     const pintarExtra = () => {
@@ -2451,11 +2722,11 @@ function renderBotones(d) {
         tipo.innerHTML = TIPOS_PULSACION.map(([v, t]) => `<option value="${v}"${v !== pl.tipo && lista.some(o => o.tipo === v) ? ' disabled' : ''}>${t}</option>`).join('');
         tipo.value = pl.tipo;
         tipo.addEventListener('change', () => { pl.tipo = tipo.value; marcarCambios(); pintarExtra(); });
-        const { sel: s2, det: d2, lado: l2 } = editorAccion({
+        const { sel: s2, det: d2, lado: l2, copia: c2 } = editorAccion({
           obtener: () => pl.accion ? pl : undefined,
           poner: v => { for (const k of Object.keys(pl)) if (k !== 'tipo') delete pl[k]; if (v) Object.assign(pl, v); },
           vacio: 'Nada', desviable: true, gestos: false, defecto: false, d,
-          destinos: d === 'raton' ? EMULABLES : [],
+          destinos: d === 'raton' ? EMULABLES : [], ajenos: ['tipo'],
         });
         const quitar = document.createElement('button'); quitar.className = 'danger'; quitar.textContent = '✕'; quitar.title = 'Quitar pulsación';
         quitar.addEventListener('click', () => {
@@ -2464,7 +2735,8 @@ function renderBotones(d) {
           marcarCambios(); pintarExtra();
         });
         const celda = document.createElement('div'); celda.append(l2, d2);
-        fila.append(tipo, s2, celda, quitar);
+        const fin = document.createElement('span'); fin.className = 'finFila'; fin.append(c2, quitar);
+        fila.append(tipo, s2, celda, fin);
         extra.appendChild(fila);
       });
       const libres = TIPOS_PULSACION.filter(([v]) => !lista.some(o => o.tipo === v));
@@ -2651,16 +2923,18 @@ function renderCombos() {
       }
       disp.appendChild(trig);
     }
-    const { sel, det, lado } = editorAccion({
+    const { sel, det, lado, copia } = editorAccion({
       obtener: () => c.accion ? c : undefined,
       poner: v => { for (const k of Object.keys(c)) if (k !== 'teclas' && k !== 'raton' && k !== 'rueda') delete c[k]; if (v) Object.assign(c, v); },
       vacio: 'Nada', desviable: true, gestos: false, d: 'raton', destinos: EMULABLES.filter(x => x !== 0x00C4),
       defecto: esApp && comboTipo(c) === 'tecla', etiquetaDefecto: 'Dejar pasar a la aplicación',
+      ajenos: ['teclas', 'raton', 'rueda'],
     });
     const quitar = document.createElement('button'); quitar.className = 'danger'; quitar.textContent = '✕'; quitar.title = 'Quitar combinación';
     quitar.addEventListener('click', () => { lista.splice(i, 1); marcarCambios(); renderCombos(); });
     const celda = document.createElement('div'); celda.append(lado, det);
-    fila.append(tipo, disp, sel, celda, quitar);
+    const fin = document.createElement('span'); fin.className = 'finFila'; fin.append(copia, quitar);
+    fila.append(tipo, disp, sel, celda, fin);
     cont.appendChild(fila);
   });
   const add = document.createElement('button'); add.textContent = '+ Añadir combinación'; add.style.marginTop = '8px';
@@ -2970,7 +3244,8 @@ async function cargarCopias() {
     const acc = document.createElement('td');
     const b = document.createElement('button'); b.type = 'button'; b.textContent = 'Restaurar';
     b.addEventListener('click', async () => {
-      if (!confirm(`¿Volver a la configuración del ${c.fecha}?` + (cambios ? '\n\nTienes cambios sin guardar en la página: se perderán.' : ''))) return;
+      if (!await confirmar({ titulo: 'Restaurar copia', mensaje: `¿Volver a la configuración del ${c.fecha}?`,
+                             detalle: cambios ? 'Tienes cambios sin guardar en la página: se perderán.' : '', aceptar: 'Restaurar' })) return;
       try {
         await api('/api/copias/restaurar', { nombre: c.nombre });
         await cargarConfig(); cargarCopias();
@@ -2985,9 +3260,13 @@ async function cargarCopias() {
 
 // ---------------------------------------------------------------- Aspecto de las listas
 // Aspecto general + listas (icono / etiqueta / contenido) + rejillas (r*, columnas, tamaño de los iconos)
+// + rejillas circulares (c*, tamaño de los iconos)
 const LISTAS_DEF = { tema: 'oscuro', acento: '#2f6fdf', opacidad: 100, radio: 0, letra: 10, espaciado: 'normal', difuminado: 'no',
                      disposicion: 'lista', detalle: true, iconos: true, etiqueta: true,
-                     tamIconoLista: 20, columnas: 0, tamIcono: 32, rIconos: true, rEtiqueta: true, rDetalle: false };
+                     tamIconoLista: 20, columnas: 0, tamIcono: 32, rIconos: true, rEtiqueta: true, rDetalle: false,
+                     tamIconoCircular: 28, cIconos: true, cEtiqueta: true, cDetalle: false };
+// Disposiciones de una lista (pestaña Listas y «Personalizar estética» de cada acción)
+const DISPOSICIONES = [['lista', 'Lista'], ['rejilla', 'Rejilla'], ['circular', 'Circular', 'Rejilla circular alrededor del cursor, como la rueda de gestos']];
 // Mismos colores que EstiloListas (raton.cs)
 const COLORES_LISTA = {
   oscuro: { fondo: [31, 35, 41], borde: [70, 80, 95], texto: '#ffffff', suave: '#9aa4b2' },
@@ -3019,11 +3298,11 @@ function deslizadorIcono(obtener, poner) {
   return cont;
 }
 
-// Opciones de estilo de una lista o de una rejilla. Las MISMAS filas (aspecto y funcionamiento) en la pestaña Listas
-// y en «Personalizar estética» de cada acción. v: { mostrar: { icono, etiqueta, contenido }, icono: px, columnas: n }
-// (columnas solo en rejilla); cambiar(): se llama tras cada cambio.
+// Opciones de estilo de una lista, una rejilla o una rejilla circular. Las MISMAS filas (aspecto y funcionamiento) en la
+// pestaña Listas y en «Personalizar estética» de cada acción. disposicion: lista | rejilla | circular.
+// v: { mostrar: { icono, etiqueta, contenido }, icono: px, columnas: n } (columnas solo en rejilla); cambiar(): tras cada cambio.
 const OPC_COLUMNAS = [['0', 'Automático'], ['2', '2'], ['3', '3'], ['4', '4'], ['5', '5'], ['6', '6']];
-function opcionesEstilo(rejilla, v, cambiar) {
+function opcionesEstilo(disposicion, v, cambiar) {
   const filas = [];
   const fila = (texto, nota, control) => {
     const tr = document.createElement('tr');
@@ -3036,26 +3315,29 @@ function opcionesEstilo(rejilla, v, cambiar) {
        segmentado([['icono', 'Icono'], ['etiqueta', 'Etiqueta'], ['contenido', 'Contenido']], k => v.mostrar[k],
                   (k, val) => { v.mostrar[k] = val; cambiar(); }, 1));
   fila('Tamaño de los iconos', '', deslizadorIcono(() => v.icono, x => { v.icono = x; cambiar(); }));
-  if (rejilla) fila('Columnas', '', segmentado(OPC_COLUMNAS, k => String(v.columnas || 0) === k,
+  if (disposicion === 'rejilla') fila('Columnas', '', segmentado(OPC_COLUMNAS, k => String(v.columnas || 0) === k,
                                                (k, val) => { if (val) { v.columnas = Number(k); cambiar(); } }, 1));
   return filas;
 }
-// Estilo de lista y de rejilla de la pestaña Listas a partir de la configuración (y al revés)
-function estiloDe(l, rejilla) {
-  return rejilla ? { mostrar: { icono: !!l.rIconos, etiqueta: !!l.rEtiqueta, contenido: !!l.rDetalle }, icono: l.tamIcono, columnas: l.columnas }
-                 : { mostrar: { icono: !!l.iconos, etiqueta: !!l.etiqueta, contenido: !!l.detalle }, icono: l.tamIconoLista };
+// Estilo de lista, de rejilla y de rejilla circular de la pestaña Listas a partir de la configuración (y al revés)
+function estiloDe(l, disposicion) {
+  if (disposicion === 'circular') return { mostrar: { icono: !!l.cIconos, etiqueta: !!l.cEtiqueta, contenido: !!l.cDetalle }, icono: l.tamIconoCircular };
+  return disposicion === 'rejilla'
+    ? { mostrar: { icono: !!l.rIconos, etiqueta: !!l.rEtiqueta, contenido: !!l.rDetalle }, icono: l.tamIcono, columnas: l.columnas }
+    : { mostrar: { icono: !!l.iconos, etiqueta: !!l.etiqueta, contenido: !!l.detalle }, icono: l.tamIconoLista };
 }
 
-// Valores de la pestaña que no son campos de formulario: disposición por defecto y estilo de listas y de rejillas
+// Valores de la pestaña que no son campos de formulario: disposición por defecto y estilo de listas, rejillas y circulares
 let estDisposicion = 'lista';
-let estLista = estiloDe(LISTAS_DEF, false), estRejilla = estiloDe(LISTAS_DEF, true);
+let estLista = estiloDe(LISTAS_DEF, 'lista'), estRejilla = estiloDe(LISTAS_DEF, 'rejilla'), estCircular = estiloDe(LISTAS_DEF, 'circular');
 const alCambiarListas = () => { pintarMuestras(); guardarListas(); marcarCambios(); };
-const segDisposicion = segmentado([['lista', 'Lista'], ['rejilla', 'Rejilla']], k => estDisposicion === k,
+const segDisposicion = segmentado(DISPOSICIONES, k => estDisposicion === k,
   (k, v) => { if (v) { estDisposicion = k; alCambiarListas(); } }, 1);
 $('lsDisposicion').appendChild(segDisposicion);
 function pintarOpcionesListas() {
-  $('lsOpcLista').replaceChildren(...opcionesEstilo(false, estLista, alCambiarListas));
-  $('lsOpcRejilla').replaceChildren(...opcionesEstilo(true, estRejilla, alCambiarListas));
+  $('lsOpcLista').replaceChildren(...opcionesEstilo('lista', estLista, alCambiarListas));
+  $('lsOpcRejilla').replaceChildren(...opcionesEstilo('rejilla', estRejilla, alCambiarListas));
+  $('lsOpcCircular').replaceChildren(...opcionesEstilo('circular', estCircular, alCambiarListas));
 }
 
 function leerListas() {
@@ -3066,6 +3348,8 @@ function leerListas() {
     iconos: estLista.mostrar.icono, etiqueta: estLista.mostrar.etiqueta, detalle: estLista.mostrar.contenido, tamIconoLista: estLista.icono,
     rIconos: estRejilla.mostrar.icono, rEtiqueta: estRejilla.mostrar.etiqueta, rDetalle: estRejilla.mostrar.contenido,
     tamIcono: estRejilla.icono, columnas: estRejilla.columnas || 0,
+    cIconos: estCircular.mostrar.icono, cEtiqueta: estCircular.mostrar.etiqueta, cDetalle: estCircular.mostrar.contenido,
+    tamIconoCircular: estCircular.icono,
   };
 }
 function pintarListas(l) {
@@ -3073,7 +3357,7 @@ function pintarListas(l) {
   $('lsTema').value = l.tema; $('lsAcento').value = l.acento; $('lsOpacidad').value = l.opacidad; $('lsRadio').value = l.radio;
   $('lsLetra').value = l.letra; $('lsEspaciado').value = l.espaciado; $('lsDifuminado').value = l.difuminado;
   estDisposicion = l.disposicion; segDisposicion.pintar();
-  estLista = estiloDe(l, false); estRejilla = estiloDe(l, true);
+  estLista = estiloDe(l, 'lista'); estRejilla = estiloDe(l, 'rejilla'); estCircular = estiloDe(l, 'circular');
   pintarOpcionesListas();
   pintarMuestras();
 }
@@ -3088,6 +3372,133 @@ function pintarMuestras() {
   $('lsLetraVal').textContent = l.letra + ' pt';
   pintarMuestra($('muestraLista'), l, radio, false);
   pintarMuestra($('muestraRejilla'), l, radio, true);
+  pintarMuestraCircular($('muestraCircular'), l);
+}
+// Vista previa de la rejilla circular: el mismo cálculo que raton.cs (FormMenu, rejilla circular). Anillo en SVG con
+// huecos transparentes entre gajos y alrededor del centro (máscara) y el contenido de cada gajo encima, en HTML.
+let medidorTexto, mascarasCirculares = 0;
+function pintarMuestraCircular(caja, l) {
+  const idMascara = 'mascaraCircular' + (++mascarasCirculares);      // único: cada dibujo, su máscara
+  const tema = l.tema === 'sistema' ? (matchMedia('(prefers-color-scheme: light)').matches ? 'claro' : 'oscuro') : l.tema;
+  const c = COLORES_LISTA[tema];
+  const [r, g, b] = [1, 3, 5].map(i => parseInt(l.acento.substr(i, 2), 16));
+  const textoSel = (r * 299 + g * 587 + b * 114) / 1000 > 170 ? '#14161a' : '#ffffff';
+  const alfa = l.opacidad / 100, fondo = `rgba(${c.fondo.join(',')}, ${alfa})`, borde = `rgba(${c.borde.join(',')}, ${Math.max(alfa, .55)})`;
+  const letra = l.letra * 4 / 3, letraDet = Math.max(7, l.letra - 1.5) * 4 / 3, altoLinea = letra * 1.33, altoDet = letraDet * 1.33;
+  const n = LISTA_EJEMPLO.length, sel = 1, ico = l.tamIconoCircular;
+  // Contenido de cada opción con su propio tamaño (mismo cálculo que raton.cs, FormMenu.MedirCircular): icono,
+  // etiqueta partida en una o dos líneas a un ancho máximo y contenido en una línea
+  medidorTexto = medidorTexto || document.createElement('canvas').getContext('2d');
+  const medir = (t, px) => { medidorTexto.font = `${px}px "Segoe UI", system-ui, sans-serif`; return medidorTexto.measureText(t).width; };
+  const partir = (texto, tope) => {          // reparto por palabras: { lineas, ancho } (la palabra más larga no se corta)
+    const lineasTxt = []; let actual = '';
+    for (const p of texto.split(' ')) {
+      const prueba = actual ? actual + ' ' + p : p;
+      if (actual && medir(prueba, letra) > tope) { lineasTxt.push(actual); actual = p; } else actual = prueba;
+    }
+    if (actual) lineasTxt.push(actual);
+    return { lineas: lineasTxt.length, ancho: Math.min(tope, Math.max(...lineasTxt.map(x => medir(x, letra)))) };
+  };
+  const K = 0.38, pad = ESPACIADO_PX[l.espaciado] / 4 + 1, raya = 3, paso = 360 / n;
+  let celdas = [];
+  const medirTodo = tope => {
+    let caben = true;
+    celdas = LISTA_EJEMPLO.map(([, nombre, det]) => {
+      let anchoTexto = 0, lineas = 0;
+      if (l.cEtiqueta) { const p = partir(nombre, tope); if (p.lineas > 2) caben = false; lineas = Math.min(2, p.lineas); anchoTexto = p.ancho; }
+      if (l.cDetalle) anchoTexto = Math.max(anchoTexto, Math.min(tope, medir(det, letraDet)));
+      const alto = (l.cIconos ? ico + (lineas || l.cDetalle ? 4 : 0) : 0) + lineas * altoLinea + (l.cDetalle ? altoDet + 2 : 0);
+      return { anchoTexto, lineas, alto: Math.max(alto, 12), ancho: Math.max(l.cIconos ? ico : 0, anchoTexto, 12), radio: 0 };
+    });
+    return caben;
+  };
+  // ¿Cabe el rectángulo (con margen) en su gajo, fuera del hueco y dentro del borde?
+  const rectEnGajo = (x0, y0, x1, y1, a, r, ri) => {
+    x0 -= pad / 2; y0 -= pad / 2; x1 += pad / 2; y1 += pad / 2;
+    const qx = Math.max(x0, Math.min(0, x1)), qy = Math.max(y0, Math.min(0, y1));
+    if (Math.hypot(qx, qy) < ri + pad / 2) return false;
+    const b0 = a - paso / 2 * Math.PI / 180, b1 = a + paso / 2 * Math.PI / 180;
+    for (const [px, py] of [[x0, y0], [x1, y0], [x0, y1], [x1, y1]]) {
+      if (Math.hypot(px, py) > r - pad / 2) return false;
+      if (n >= 2 && (-px * Math.sin(b0) + py * Math.cos(b0) < raya || px * Math.sin(b1) - py * Math.cos(b1) < raya)) return false;
+    }
+    return true;
+  };
+  const cabe = r => {
+    const ri = K * r, medio = (1 + K) / 2 * r, salto = (r - ri) / 40;
+    return celdas.every((c, i) => {
+      const a = (-90 + i * paso) * Math.PI / 180;
+      for (let k = 0; k <= 40; k++) {
+        const rc = medio + (k % 2 ? -1 : 1) * Math.ceil(k / 2) * salto;
+        if (rc <= ri || rc >= r) continue;
+        const cx = Math.cos(a) * rc, cy = Math.sin(a) * rc, arriba = cy - c.alto / 2;
+        const altoIcono = l.cIconos ? ico + (c.lineas || c.anchoTexto ? 4 : 0) : 0;
+        if (l.cIconos && !rectEnGajo(cx - ico / 2, arriba, cx + ico / 2, arriba + ico, a, r, ri)) continue;
+        if (c.anchoTexto && !rectEnGajo(cx - c.anchoTexto / 2, arriba + altoIcono, cx + c.anchoTexto / 2, arriba + c.alto, a, r, ri)) continue;
+        c.radio = rc; return true;
+      }
+      return false;
+    });
+  };
+  const radioMinimo = () => {
+    let no = 20, si = 2000;
+    if (cabe(no)) return Math.ceil(no);
+    for (let k = 0; k < 24; k++) { const m = (no + si) / 2; if (cabe(m)) si = m; else no = m; }
+    return Math.ceil(si);
+  };
+  // El ancho máximo de la etiqueta que da el círculo más pequeño (solo los que dejan todo en dos líneas como mucho)
+  const TOPES = [64, 80, 96, 120, 150, 190];
+  let mejorTope = Math.max(ico, TOPES[TOPES.length - 1]), mejorR = Infinity;
+  for (const t of TOPES) {
+    const tope = Math.max(ico, t);
+    if (!medirTodo(tope) && t !== TOPES[TOPES.length - 1]) continue;
+    const r = radioMinimo();
+    if (r < mejorR - 0.5) { mejorR = r; mejorTope = tope; }
+  }
+  medirTodo(mejorTope);
+  const rExt = radioMinimo(); cabe(rExt);
+  const rCentro = K * rExt;
+  const lado = Math.ceil(2 * (rExt + 5)), m = lado / 2;
+  const punto = (ang, rad) => [m + Math.cos(ang * Math.PI / 180) * rad, m + Math.sin(ang * Math.PI / 180) * rad];
+  const ini = -90 - paso / 2 + sel * paso;
+  const [ax, ay] = punto(ini, rExt), [bx, by] = punto(ini + paso, rExt);
+  const cortes = Array.from({ length: n }, (_, i) => {
+    const a = -90 - paso / 2 + i * paso, [x1, y1] = punto(a, rCentro - 2), [x2, y2] = punto(a, rExt + 2);
+    return `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}"/>`;
+  }).join('');
+  caja.className = 'muestraCircular';
+  caja.style.width = caja.style.height = lado + 'px';
+  caja.style.fontSize = letra + 'px';
+  caja.innerHTML =
+    `<svg width="${lado}" height="${lado}" viewBox="0 0 ${lado} ${lado}" aria-hidden="true">` +
+    `<defs><mask id="${idMascara}" maskUnits="userSpaceOnUse"><rect width="${lado}" height="${lado}" fill="#fff"/>` +
+    `<g stroke="#000" stroke-width="3" fill="none">${cortes}</g>` +
+    `<circle cx="${m}" cy="${m}" r="${rCentro}" fill="#000"/></mask></defs>` +
+    `<g mask="url(#${idMascara})"><circle cx="${m}" cy="${m}" r="${rExt}" fill="${fondo}" stroke="${borde}"/>` +
+    `<path d="M${m} ${m} L${ax} ${ay} A${rExt} ${rExt} 0 0 1 ${bx} ${by} Z" fill="${l.acento}"/></g>` +
+    `<circle cx="${m}" cy="${m}" r="${rCentro}" fill="none" stroke="${borde}"/>` +
+    `</svg>`;
+  LISTA_EJEMPLO.forEach(([icono, nombre, det], i) => {
+    // Cada opción con su tamaño y a su distancia del centro (la que le ha dejado sitio en su gajo)
+    const cel = celdas[i], [x, y] = punto(-90 + i * paso, cel.radio), anchoCel = cel.ancho + 4;
+    const celda = document.createElement('div'); celda.className = 'cCelda';
+    Object.assign(celda.style, { left: (x - anchoCel / 2) + 'px', top: (y - cel.alto / 2) + 'px', width: anchoCel + 'px',
+                                 height: cel.alto + 'px', color: i === sel ? textoSel : c.texto });
+    if (l.cIconos) {
+      const s = document.createElement('span'); s.className = 'mIcono'; s.textContent = icono;
+      Object.assign(s.style, { width: ico + 'px', height: ico + 'px', fontSize: Math.round(ico * 0.82) + 'px', lineHeight: ico + 'px' });
+      celda.appendChild(s);
+    }
+    if (l.cEtiqueta) {
+      const s = document.createElement('span'); s.className = 'cNombre'; s.textContent = nombre;
+      s.style.webkitLineClamp = cel.lineas; s.style.lineHeight = altoLinea + 'px'; celda.appendChild(s);
+    }
+    if (l.cDetalle) {
+      const s = document.createElement('span'); s.className = 'cDetalle'; s.textContent = det;
+      Object.assign(s.style, { fontSize: letraDet + 'px', color: i === sel ? textoSel : c.suave }); celda.appendChild(s);
+    }
+    caja.appendChild(celda);
+  });
 }
 function pintarMuestra(caja, l, radio, rejilla) {
   const tema = l.tema === 'sistema' ? (matchMedia('(prefers-color-scheme: light)').matches ? 'claro' : 'oscuro') : l.tema;
@@ -3164,7 +3575,8 @@ for (const b of document.querySelectorAll('.muestraColor')) {
 }
 $('btnListasDefecto').addEventListener('click', () => { pintarListas({}); guardarListas(); marcarCambios(); });
 // Probar: la lista o la rejilla de ejemplo (aunque la disposición por defecto sea otra) o la paleta
-for (const [id, disposicion, paleta] of [['btnProbarLista', 'lista', false], ['btnProbarRejilla', 'rejilla', false], ['btnProbarPaleta', 'lista', true]]) {
+for (const [id, disposicion, paleta] of [['btnProbarLista', 'lista', false], ['btnProbarRejilla', 'rejilla', false],
+                                         ['btnProbarCircular', 'circular', false], ['btnProbarPaleta', 'lista', true]]) {
   $(id).addEventListener('click', async () => {
     try { await api('/api/listas/probar', { estilo: Object.assign(leerListas(), { disposicion }), paleta }); }
     catch (e) { aviso('No se pudo probar: ' + e.message, 'err'); }
@@ -3219,7 +3631,7 @@ $('btnGuardar').addEventListener('click', async () => {
   try {
     await api('/api/config', JSON.stringify(config, null, 2));
     if ($('banner').classList.contains('err')) banner('');
-    marcarCambios(false);
+    marcarCambios(false); borrarBorrador();
     aviso('Configuración guardada y aplicada', 'ok');
     if (!$('paneAjustes').classList.contains('hidden')) cargarCopias();
   } catch (e) { errorGuardar('No se pudo guardar: ' + e.message); }
@@ -3233,7 +3645,7 @@ function guardando(si) {
   b.innerHTML = si ? '<span class="girando" aria-hidden="true"></span>Guardando…' : ICONO_GUARDAR;
 }
 $('btnDeshacer').addEventListener('click', async () => {
-  try { await cargarConfig(); aviso('Cambios descartados'); } catch (e) { aviso('Error: ' + e.message, 'err'); }
+  try { await cargarConfig(); borrarBorrador(); aviso('Cambios descartados'); } catch (e) { aviso('Error: ' + e.message, 'err'); }
 });
 $('btnExportar').addEventListener('click', () => {
   config.raton.rueda = leerRueda();
@@ -3302,7 +3714,9 @@ for (const [id, dispositivo] of [['chkBandejaTeclado', 'teclado'], ['chkBandejaR
   });
 }
 $('btnSalir').addEventListener('click', async () => {
-  if (!confirm('¿Cerrar el servidor? Los botones y teclas volverán a su función de fábrica.')) return;
+  if (!await confirmar({ titulo: 'Cerrar servidor', mensaje: '¿Cerrar el servidor?',
+                         detalle: 'Los botones y teclas volverán a su función de fábrica hasta que lo vuelvas a abrir con iniciar.cmd.',
+                         aceptar: 'Cerrar servidor', peligro: true })) return;
   try { await api('/api/salir', {}); } catch {}
   servidorOk = false;
   banner('Servidor cerrado. Para volver a usarlo, ejecuta <code>iniciar.cmd</code> y recarga esta página.');
@@ -3312,7 +3726,7 @@ $('btnSalir').addEventListener('click', async () => {
 async function refrescarEstado() {
   try {
     estado = await api('/api/estado');
-    if (!servidorOk) { servidorOk = true; banner(''); if (!cambios) await cargarConfig(); }
+    if (!servidorOk) { servidorOk = true; banner(''); if (!cambios) { await cargarConfig(); ofrecerBorrador(); } }
   } catch {
     servidorOk = false;
     if (!avisadoToken) banner('No hay conexión con el servidor. Ejecuta <code>iniciar.cmd</code> y espera unos segundos.');
@@ -3544,7 +3958,41 @@ for (const b of document.querySelectorAll('#vistaActividad button')) {
 }
 for (const b of document.querySelectorAll('#tabsConfig > button')) b.addEventListener('click', () => activarTab(b.dataset.tab));
 
-window.addEventListener('beforeunload', e => { if (cambios) { e.preventDefault(); e.returnValue = ''; } });
+// ---------------------------------------------------------------- Cambios sin guardar al cerrar
+// El aviso de «¿Salir del sitio?» lo pone el navegador con su texto y su aspecto (no se puede personalizar), así que no
+// se usa: al cerrar con cambios sin guardar se guardan como borrador en este navegador y, al volver a abrir la página,
+// el diálogo propio ofrece recuperarlos o descartarlos. Al guardar, deshacer o cerrar sin cambios, el borrador se borra.
+const CLAVE_BORRADOR = 'borradorConfig';
+function guardarBorrador() {
+  try {
+    if (!cambios || !config) { localStorage.removeItem(CLAVE_BORRADOR); return; }
+    try { config.raton.rueda = leerRueda(); } catch {}
+    localStorage.setItem(CLAVE_BORRADOR, JSON.stringify({ fecha: Date.now(), config }));
+  } catch {}
+}
+function borrarBorrador() { try { localStorage.removeItem(CLAVE_BORRADOR); } catch {} }
+window.addEventListener('pagehide', guardarBorrador);
+window.addEventListener('beforeunload', guardarBorrador);
+// Una vez por apertura, tras cargar la configuración del servidor: si quedó un borrador distinto de ella, se ofrece
+let borradorRevisado = false;
+async function ofrecerBorrador() {
+  if (borradorRevisado) return;
+  borradorRevisado = true;
+  let b = null;
+  try { b = JSON.parse(localStorage.getItem(CLAVE_BORRADOR) || 'null'); } catch {}
+  if (!b || !b.config) return;
+  if (JSON.stringify(normalizar(b.config)) === JSON.stringify(config)) { borrarBorrador(); return; }
+  const cuando = new Date(b.fecha).toLocaleString('es-ES', { dateStyle: 'short', timeStyle: 'short' });
+  const recuperar = await confirmar({ titulo: 'Cambios sin guardar', mensaje: `La última vez (${cuando}) cerraste la página con cambios sin guardar.`,
+                                      detalle: 'Recupéralos para seguir con ellos (se aplican cuando pulses Guardar) o descártalos.',
+                                      aceptar: 'Recuperar', cancelar: 'Descartar' });
+  borrarBorrador();
+  if (!recuperar) return;
+  config = normalizar(b.config);
+  pintarConfig();
+  marcarCambios(true);
+  aviso('Cambios sin guardar recuperados: pulsa Guardar para aplicarlos');
+}
 
 // ---------------------------------------------------------------- Tema (botón sol / luna)
 function temaEfectivo() {

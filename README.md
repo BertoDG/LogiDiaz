@@ -9,7 +9,8 @@ No necesita instalación ni permisos de administrador, y no envía nada a intern
 ## Qué puede hacer
 
 - **Botones y teclas**: atajos de teclado, actuar como otro botón, plantillas de texto (con fecha, hora, portapapeles…),
-  ejecutar programas, listas y rejillas de opciones junto al cursor, lista de programas abiertos, paleta de comandos,
+  ejecutar programas, listas y rejillas de opciones junto al cursor (también en círculo alrededor del cursor, como la
+  rueda de gestos), lista de programas abiertos, paleta de comandos,
   transformar el texto seleccionado, captura de pantalla (también a texto con el OCR de Windows), chat con Claude y
   recolocar la ventana activa en una cuadrícula.
 - **Doble clic y pulsación larga** con su propia acción, y **gestos** (mantener el botón y mover) con una acción por dirección.

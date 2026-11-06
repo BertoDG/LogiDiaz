@@ -883,7 +883,7 @@ namespace LogiRaton {
     public int[] Teclas;
     public Dictionary<string, Accion> Gestos;   // accion por direccion de gesto
     public List<Opcion> Opciones;
-    public int ListaRejilla = -1, ListaColumnas = -1;   // formato propio de la lista (rejilla 0/1, columnas 0 = auto); -1 = como en Listas
+    public int ListaRejilla = -1, ListaColumnas = -1;   // formato propio de la lista (0 lista, 1 rejilla, 2 circular; columnas 0 = auto); -1 = como en Listas
     public int ListaIcono = -1;                          // tamano de los iconos de la lista en rejilla (px); -1 = como en Listas
     public int ListaVer = -1;                            // que se ve: 1 icono, 2 etiqueta, 4 contenido (suma); -1 = como en Listas
     public int RejFilas = 2, RejColumnas = 3, RejSeparacion = 8;   // recolocar ventana: cuadricula de la pantalla y hueco (px)
@@ -2072,6 +2072,9 @@ namespace LogiRaton {
     public int Columnas = 0;                                   // columnas de la rejilla (0 = segun cuantas opciones haya)
     public int TamIcono = 32;                                  // tamano de los iconos en la rejilla (px a 96 ppp)
     public int TamIconoLista = 20;                             // y en las listas
+    public bool Circular = false;                              // opciones en circulo alrededor del cursor (como la rueda de gestos)
+    public bool CDetalle = false, CIconos = true, CNombre = true;   // que se ve de cada opcion en la rejilla circular
+    public int TamIconoCircular = 28;                          // tamano de los iconos en la rejilla circular (px a 96 ppp)
   }
 
   public static class EstiloListas {
@@ -2080,7 +2083,8 @@ namespace LogiRaton {
     public static Estilo Actual { get { return prueba ?? guardado; } }
 
     public static Estilo Crear(string tema, string acento, int opacidad, int radio, bool detalle, bool iconos, bool etiqueta, double letra, string espaciado, string difuminado,
-                               string disposicion, int columnas, int tamIcono, bool rIconos, bool rEtiqueta, bool rDetalle, int tamIconoLista) {
+                               string disposicion, int columnas, int tamIcono, bool rIconos, bool rEtiqueta, bool rDetalle, int tamIconoLista,
+                               bool cIconos, bool cEtiqueta, bool cDetalle, int tamIconoCircular) {
       Estilo e = new Estilo();
       e.Tema = tema == "claro" || tema == "sistema" ? tema : "oscuro";
       try { if (!string.IsNullOrEmpty(acento)) e.Acento = ColorTranslator.FromHtml(acento); } catch { }
@@ -2094,9 +2098,13 @@ namespace LogiRaton {
       e.Espaciado = espaciado == "compacto" ? 8 : espaciado == "amplio" ? 22 : 14;
       e.Difuminado = difuminado == "suave" ? 1 : difuminado == "intenso" ? 2 : 0;
       e.Rejilla = disposicion == "rejilla";
+      e.Circular = disposicion == "circular";
       e.Columnas = columnas <= 0 ? 0 : Math.Max(2, Math.Min(6, columnas));
       e.TamIcono = tamIcono <= 0 ? 32 : Math.Max(16, Math.Min(96, tamIcono));
       e.TamIconoLista = tamIconoLista <= 0 ? 20 : Math.Max(16, Math.Min(96, tamIconoLista));
+      e.CIconos = cIconos; e.CNombre = cEtiqueta; e.CDetalle = cDetalle;
+      if (!e.CDetalle && !e.CIconos && !e.CNombre) e.CNombre = true;
+      e.TamIconoCircular = tamIconoCircular <= 0 ? 28 : Math.Max(16, Math.Min(96, tamIconoCircular));
       return e;
     }
     public static void Configurar(Estilo e) { guardado = e ?? new Estilo(); }
@@ -3275,20 +3283,56 @@ namespace LogiRaton {
       // Volver a pulsar el boton con la ventana fija abierta la cierra
       if (Visible && cid == cidActual && modo == "fijo") { Ocultar(); modo = "ignorar"; return; }
       AplicarEstilo();
-      rejilla = rej < 0 ? es.Rejilla : rej == 1;
-      columnasFijas = col < 0 ? es.Columnas : col;
-      tamIcono = ico > 0 ? ico : (rejilla ? es.TamIcono : es.TamIconoLista);   // propio de la lista o el de Listas / Rejillas
-      // Que se ve de cada opcion: lo propio de la lista o lo de la pestana Listas (siempre algo)
-      verIcono = ver >= 0 ? (ver & 1) != 0 : (rejilla ? es.RIconos : es.Iconos);
-      verNombre = ver >= 0 ? (ver & 2) != 0 : (rejilla ? es.RNombre : es.Nombre);
-      verDetalle = ver >= 0 ? (ver & 4) != 0 : (rejilla ? es.RDetalle : es.Detalle);
-      if (!verIcono && !verNombre && !verDetalle) verNombre = true;
       ops = o ?? new List<Opcion>();
+      // Circular solo con algo que mostrar (sin opciones sale el aviso en una lista normal)
+      circular = (rej < 0 ? es.Circular : rej == 2) && ops.Count > 0;
+      rejilla = !circular && (rej < 0 ? es.Rejilla : rej == 1);
+      columnasFijas = col < 0 ? es.Columnas : col;
+      // Tamano de los iconos: propio de la lista o el de Listas / Rejillas / Rejillas circulares
+      tamIcono = ico > 0 ? ico : (circular ? es.TamIconoCircular : rejilla ? es.TamIcono : es.TamIconoLista);
+      // Que se ve de cada opcion: lo propio de la lista o lo de la pestana Listas (siempre algo)
+      verIcono = ver >= 0 ? (ver & 1) != 0 : (circular ? es.CIconos : rejilla ? es.RIconos : es.Iconos);
+      verNombre = ver >= 0 ? (ver & 2) != 0 : (circular ? es.CNombre : rejilla ? es.RNombre : es.Nombre);
+      verDetalle = ver >= 0 ? (ver & 4) != 0 : (circular ? es.CDetalle : rejilla ? es.RDetalle : es.Detalle);
+      if (!verIcono && !verNombre && !verDetalle) verNombre = true;
       cidActual = cid; hover = -1;
       Point c = Cursor.Position;
       Rectangle area = Screen.FromPoint(c).WorkingArea;
       int w, h;
-      if (rejilla) {
+      if (circular) {
+        // Gajos alrededor del cursor: el contenido de cada opcion (como una celda de rejilla) en el centro de su gajo
+        if (ops.Count > MAX_CIRCULAR) ops = ops.GetRange(0, MAX_CIRCULAR);
+        conIconos = verIcono;
+        int n = ops.Count;
+        // Contenido de cada opcion con su propio tamano: icono, etiqueta (en una o dos lineas) y contenido en una linea.
+        // El ancho maximo de la etiqueta se elige entre varios el que da el circulo mas pequeno: mas estrecha = dos
+        // lineas (contenido mas alto, anillo mas grueso); mas ancha = una linea (gajos mas anchos). Solo valen los
+        // anchos con los que ninguna etiqueta pasa de dos lineas (si ninguno, el mayor).
+        float icoR = tamIcono * esc;
+        cAnchos = new float[n]; cAltos = new float[n]; cLineasOp = new int[n]; cAnchosTexto = new float[n]; cRadios = new float[n];
+        // Margen hasta el borde, el hueco y las rayas (segun el espaciado) y grosor de la raya entre gajos
+        float pad = (es.Espaciado / 4 + 1) * esc, raya = 3 * esc;
+        float[] topes = { 64, 80, 96, 120, 150, 190 };
+        float mejorTope = topes[topes.Length - 1] * esc, mejorR = float.MaxValue;
+        using (Graphics g = CreateGraphics()) {
+          foreach (float t in topes) {
+            if (!MedirCircular(g, Math.Max(icoR, t * esc)) && t != topes[topes.Length - 1]) continue;
+            float rt = RadioMinimoCircular(pad, raya);
+            if (rt < mejorR - 0.5f) { mejorR = rt; mejorTope = Math.Max(icoR, t * esc); }
+          }
+          MedirCircular(g, mejorTope);
+        }
+        // Radios: el interior es el 38 % del exterior (como la rueda de gestos). El exterior es el MINIMO con el que el
+        // contenido de cada opcion cabe entero en su gajo (ver CabeCircular). Crece con el tamano de iconos y textos.
+        float r = RadioMinimoCircular(pad, raya);
+        CabeCircular(r, pad, raya);                     // deja en cRadios la distancia al centro de cada opcion con este radio
+        cRExterior = r;
+        cRCentro = INTERIOR_CIRCULAR * r;
+        cRTexto = (1 + INTERIOR_CIRCULAR) / 2 * r;
+        int lado = (int)Math.Ceiling(2 * (cRExterior + 5 * esc));       // con sitio para la sombra
+        w = h = lado;
+        cCentroX = cCentroY = lado / 2f;
+      } else if (rejilla) {
         conIconos = verIcono;
         // Celdas: icono arriba, etiqueta debajo (hasta dos lineas) y contenido en una linea pequena; mas anchas si el icono es grande
         // Celdas del tamano justo de lo que se ve (sin minimo fijo): el icono y, si hay, la etiqueta mas ancha (hasta un tope;
@@ -3345,15 +3389,24 @@ namespace LogiRaton {
       }
       ancho = w;
       int x = c.X + (int)(14 * esc), y = c.Y + (int)(10 * esc);
-      if (x + w > area.Right) x = c.X - w - (int)(14 * esc);
-      if (y + h > area.Bottom) y = area.Bottom - h;
+      if (circular) {
+        // Centrada en el cursor (dentro de la pantalla): el cursor empieza en el centro, que no elige nada
+        x = Math.Max(area.Left, Math.Min(c.X - w / 2, area.Right - w));
+        y = Math.Max(area.Top, Math.Min(c.Y - h / 2, area.Bottom - h));
+      } else {
+        if (x + w > area.Right) x = c.X - w - (int)(14 * esc);
+        if (y + h > area.Bottom) y = area.Bottom - h;
+      }
       Bounds = new Rectangle(x, y, w, h);
       abierto = ultimoUso = DateTime.UtcNow;
       modo = "manteniendo";
       Pintar();
       if (!Visible) { Show(); Pintar(); }        // al mostrarse por primera vez Windows puede descartar lo dibujado
       CapturarEsc(true);
-      if (es.Difuminado != 0) {
+      // En circulo el gajo se ilumina aunque el cursor salga del circulo: se sigue con el reloj, mas a menudo
+      reloj.Interval = circular ? 30 : 150;
+      botonAntes = BotonRatonPulsado();          // un boton que ya estaba pulsado al abrir no cuenta como clic fuera
+      if (es.Difuminado != 0 && !circular) {
         if (respaldo == null) respaldo = new FormRespaldo();
         respaldo.Colocar(Handle, Bounds, es);
       } else if (respaldo != null) respaldo.Quitar();
@@ -3383,6 +3436,7 @@ namespace LogiRaton {
 
     // Opcion bajo el punto (fila de la lista o celda de la rejilla); -1 si no hay ninguna
     int FilaEn(Point p) {
+      if (circular) return GajoEn(p);
       if (p.X < 0 || p.X > Width || p.Y < Margen) return -1;
       if (rejilla) {
         if (p.X < Margen) return -1;
@@ -3395,9 +3449,33 @@ namespace LogiRaton {
       return i >= 0 && i < ops.Count ? i : -1;
     }
 
+    // Circular: gajo hacia el que apunta el cursor (por el angulo desde el centro, como la rueda de gestos).
+    // El hueco del centro no elige nada (soltar ahi cancela). Manteniendo el boton cuenta aunque el cursor salga del
+    // circulo; con la ventana fija solo dentro del anillo (pinchar fuera o en el hueco la cierra, ver Vigilar).
+    int GajoEn(Point p) {
+      int n = ops.Count;
+      if (n == 0) return -1;
+      double dx = p.X - cCentroX, dy = p.Y - cCentroY, dist = Math.Sqrt(dx * dx + dy * dy);
+      if (dist < cRCentro) return -1;
+      if (modo == "fijo" && dist > cRExterior) return -1;
+      double paso = 360.0 / n;
+      double ang = Math.Atan2(dy, dx) * 180 / Math.PI + 90 + paso / 2;   // 0 = arriba, en el sentido de las agujas del reloj
+      ang = ((ang % 360) + 360) % 360;
+      return Math.Min(n - 1, (int)(ang / paso));
+    }
+
     // Con la ventana fija: se cierra si el cursor se aleja o tras unos segundos sin usarla
     void Vigilar() {
       if (!Visible) { reloj.Stop(); return; }
+      if (circular && modo != "ignorar") {
+        int i = FilaEn(PointToClient(Cursor.Position));
+        if (i != hover) { hover = i; Pintar(); }
+        // Fija: un clic fuera del anillo (o en su hueco, que es transparente) no llega a esta ventana; se detecta aqui
+        // al pulsar el boton izquierdo o el derecho y la cierra (el clic sigue su camino a lo que haya debajo)
+        bool pulsado = BotonRatonPulsado();
+        if (modo == "fijo" && pulsado && !botonAntes && i < 0) { botonAntes = pulsado; Ocultar(); return; }
+        botonAntes = pulsado;
+      }
       if (modo != "fijo") return;
       Rectangle r = Bounds; r.Inflate((int)(160 * esc), (int)(160 * esc));
       if (!r.Contains(Cursor.Position) || (DateTime.UtcNow - ultimoUso).TotalSeconds > 8) Ocultar();
@@ -3412,7 +3490,7 @@ namespace LogiRaton {
     protected override void OnMouseUp(MouseEventArgs e) {
       if (e.Button != MouseButtons.Left) return;
       int i = FilaEn(e.Location);
-      if (i < 0) return;
+      if (i < 0) { if (circular) Ocultar(); return; }      // en circulo, un clic en el centro (la X) la cierra
       Ocultar();
       Ejecutar(i);
     }
@@ -3440,6 +3518,7 @@ namespace LogiRaton {
       g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
       g.TextRenderingHint = System.Drawing.Text.TextRenderingHint.AntiAliasGridFit;   // ClearType no admite fondo con alfa
       g.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.HighQualityBicubic;
+      if (circular) { DibujarCircular(g); return; }
       float radio = EstiloListas.RadioEfectivo(es) * esc;
       int alfa = 255 * es.Opacidad / 100;
       RectangleF marco = new RectangleF(0.5f, 0.5f, Width - 1, Height - 1);
@@ -3514,17 +3593,7 @@ namespace LogiRaton {
           }
           float y = celda.Y + arriba;
           if (conIconos) {
-            Rectangle ri = new Rectangle((int)(celda.X + (celda.Width - icono) / 2), (int)y, icono, icono);
-            if (op.Icono != null) EstiloListas.DibujarIcono(g, op.Icono, ri, cTexto);
-            else {
-              // Sin icono: inicial del nombre en un circulo
-              using (SolidBrush b = new SolidBrush(Color.FromArgb(sel ? 70 : 255, sel ? cTexto : EstiloListas.Borde(es)))) g.FillEllipse(b, ri);
-              string ini = string.IsNullOrEmpty(op.Nombre) ? "?" : op.Nombre.Substring(0, 1).ToUpperInvariant();
-              using (StringFormat sc = new StringFormat()) using (SolidBrush b = new SolidBrush(cTexto)) {
-                sc.Alignment = StringAlignment.Center; sc.LineAlignment = StringAlignment.Center;
-                g.DrawString(ini, fInicial, b, ri, sc);
-              }
-            }
+            IconoOInicial(g, op, new Rectangle((int)(celda.X + (celda.Width - icono) / 2), (int)y, icono, icono), sel, cTexto, fInicial);
             y += icono + (int)(5 * esc);
           }
           if (verNombre) {
@@ -3537,6 +3606,169 @@ namespace LogiRaton {
             using (SolidBrush bDet = new SolidBrush(sel ? EstiloListas.TextoSel(es) : EstiloListas.TextoSuave(es))) {
               sd.Alignment = StringAlignment.Center; sd.Trimming = StringTrimming.EllipsisCharacter;
               g.DrawString(op.Detalle, fuenteDet, bDet, new RectangleF(celda.X + hueco, y + 2 * esc, celda.Width - 2 * hueco, fuenteDet.Height + 2), sd);
+            }
+          }
+        }
+      }
+    }
+
+    // Icono de la opcion o, si no tiene, la inicial de su nombre en un circulo (rejilla y rejilla circular)
+    void IconoOInicial(Graphics g, Opcion op, Rectangle ri, bool sel, Color cTexto, Font fInicial) {
+      if (op.Icono != null) { EstiloListas.DibujarIcono(g, op.Icono, ri, cTexto); return; }
+      using (SolidBrush b = new SolidBrush(Color.FromArgb(sel ? 70 : 255, sel ? cTexto : EstiloListas.Borde(es)))) g.FillEllipse(b, ri);
+      string ini = string.IsNullOrEmpty(op.Nombre) ? "?" : op.Nombre.Substring(0, 1).ToUpperInvariant();
+      using (StringFormat sc = new StringFormat()) using (SolidBrush b = new SolidBrush(cTexto)) {
+        sc.Alignment = StringAlignment.Center; sc.LineAlignment = StringAlignment.Center;
+        g.DrawString(ini, fInicial, b, ri, sc);
+      }
+    }
+
+    // ---- Rejilla circular: un anillo alrededor del cursor repartido en gajos (uno por opcion, el primero arriba y en el
+    // sentido de las agujas del reloj), con huecos transparentes entre gajos y el centro hueco, como la rueda de
+    // gestos. Fondo, opacidad, tema, color de la seleccion y letra son los de las listas.
+    const int MAX_CIRCULAR = 12;                   // mas opciones no caben bien en un circulo: se muestran las primeras
+    const float INTERIOR_CIRCULAR = 0.38f;         // radio del hueco central / radio exterior (el de la rueda de gestos)
+    bool circular;
+    float cCentroX, cCentroY, cRCentro, cRTexto, cRExterior;
+    float[] cAnchos, cAltos, cAnchosTexto;          // tamano del contenido de cada opcion y ancho de su texto
+    int[] cLineasOp;                               // lineas de la etiqueta de cada opcion (0, 1 o 2)
+    float[] cRadios;                               // distancia del centro del circulo al centro del contenido de cada opcion
+
+    // Mide el contenido de cada opcion con la etiqueta partida a un ancho maximo tope. Devuelve si todas las etiquetas
+    // caben en dos lineas (con mas, se recortarian con puntos suspensivos)
+    bool MedirCircular(Graphics g, float tope) {
+      float icoR = tamIcono * esc, altoLinea = fuente.GetHeight(g);
+      bool caben = true;
+      for (int i = 0; i < ops.Count; i++) {
+        Opcion op = ops[i];
+        float anchoTexto = 0, altoOp = 0;
+        int lineas = 0;
+        if (verNombre && !string.IsNullOrEmpty(op.Nombre)) {
+          SizeF sn = g.MeasureString(op.Nombre, fuente, (int)Math.Ceiling(tope));
+          int reales = Math.Max(1, (int)Math.Round(sn.Height / altoLinea));
+          if (reales > 2) caben = false;
+          lineas = Math.Min(2, reales);
+          anchoTexto = Math.Min(tope, sn.Width);
+        }
+        bool det = ConDetalle(op);
+        if (det) anchoTexto = Math.Max(anchoTexto, Math.Min(tope, g.MeasureString(op.Detalle, fuenteDet).Width));
+        cAnchosTexto[i] = anchoTexto;
+        if (conIconos) altoOp = icoR + (lineas > 0 || det ? 4 * esc : 0);
+        altoOp += lineas * fuente.Height + (det ? fuenteDet.Height + 2 * esc : 0);
+        cAnchos[i] = Math.Max(Math.Max(conIconos ? icoR : 0, anchoTexto), 12 * esc);
+        cAltos[i] = Math.Max(altoOp, 12 * esc); cLineasOp[i] = lineas;
+      }
+      return caben;
+    }
+    // Radio exterior minimo con el que cabe todo (biseccion: cuanto mayor el radio, mas sitio hay), en px enteros
+    float RadioMinimoCircular(float pad, float raya) {
+      float rNoCabe = 20 * esc, rCabe = 2000 * esc;
+      if (CabeCircular(rNoCabe, pad, raya)) return (float)Math.Ceiling(rNoCabe);
+      for (int k = 0; k < 24; k++) { float medio = (rNoCabe + rCabe) / 2; if (CabeCircular(medio, pad, raya)) rCabe = medio; else rNoCabe = medio; }
+      return (float)Math.Ceiling(rCabe);
+    }
+
+    // Si con radio exterior r el contenido de cada opcion cabe en su gajo. Cada opcion se prueba primero a media altura
+    // del anillo y, si no cabe, un poco mas adentro o mas afuera (la primera posicion que valga queda en cRadios).
+    bool CabeCircular(float r, float pad, float raya) {
+      int n = ops.Count;
+      double paso = 2 * Math.PI / n, ri = INTERIOR_CIRCULAR * r, medio = (1 + INTERIOR_CIRCULAR) / 2 * r, salto = (r - ri) / 40;
+      for (int i = 0; i < n; i++) {
+        double a = -Math.PI / 2 + i * paso;
+        bool cabe = false;
+        for (int k = 0; k <= 40 && !cabe; k++) {
+          double rc = medio + (k % 2 == 0 ? 1 : -1) * ((k + 1) / 2) * salto;        // medio, +1, -1, +2, -2...
+          if (rc <= ri || rc >= r) continue;
+          if (CabeOpcion(i, a, paso, rc, r, ri, pad, raya)) { cRadios[i] = (float)rc; cabe = true; }
+        }
+        if (!cabe) return false;
+      }
+      return true;
+    }
+    // El contenido de una opcion son dos rectangulos: el icono arriba (estrecho) y el texto debajo (etiqueta y
+    // contenido). Ambos, con margen, tienen que quedar fuera del hueco, dentro del borde exterior y entre las rayas.
+    bool CabeOpcion(int i, double a, double paso, double rc, double r, double ri, float pad, float raya) {
+      double cx = Math.Cos(a) * rc, cy = Math.Sin(a) * rc, arriba = cy - cAltos[i] / 2;
+      double altoIcono = conIconos ? tamIcono * esc + (cLineasOp[i] > 0 || cAnchosTexto[i] > 0 ? 4 * esc : 0) : 0;
+      if (conIconos && !RectEnGajo(cx - tamIcono * esc / 2, arriba, cx + tamIcono * esc / 2, arriba + tamIcono * esc, a, paso, r, ri, pad, raya)) return false;
+      if (cAnchosTexto[i] > 0 && !RectEnGajo(cx - cAnchosTexto[i] / 2, arriba + altoIcono, cx + cAnchosTexto[i] / 2, arriba + cAltos[i], a, paso, r, ri, pad, raya)) return false;
+      return true;
+    }
+    bool RectEnGajo(double x0, double y0, double x1, double y1, double a, double paso, double r, double ri, float pad, float raya) {
+      x0 -= pad / 2; y0 -= pad / 2; x1 += pad / 2; y1 += pad / 2;
+      // Hueco central: el punto del rectangulo mas cercano al centro, fuera del hueco
+      double qx = Math.Max(x0, Math.Min(0, x1)), qy = Math.Max(y0, Math.Min(0, y1));
+      if (Math.Sqrt(qx * qx + qy * qy) < ri + pad / 2) return false;
+      double b0 = a - paso / 2, b1 = a + paso / 2;
+      for (int e = 0; e < 4; e++) {
+        double px = (e & 1) == 0 ? x0 : x1, py = (e & 2) == 0 ? y0 : y1;
+        if (Math.Sqrt(px * px + py * py) > r - pad / 2) return false;                   // borde exterior
+        if (ops.Count >= 2) {
+          // Dentro del gajo: a un lado de su borde inicial y al otro del final, separado por la raya
+          if (-px * Math.Sin(b0) + py * Math.Cos(b0) < raya) return false;
+          if (px * Math.Sin(b1) - py * Math.Cos(b1) < raya) return false;
+        }
+      }
+      return true;
+    }
+    bool botonAntes;                               // boton izquierdo o derecho pulsado en la vuelta anterior del reloj
+    [DllImport("user32.dll")] static extern short GetAsyncKeyState(int vk);
+    static bool BotonRatonPulsado() { return (GetAsyncKeyState(0x01) & 0x8000) != 0 || (GetAsyncKeyState(0x02) & 0x8000) != 0; }
+
+    void DibujarCircular(Graphics g) {
+      int n = ops.Count, alfa = 255 * es.Opacidad / 100;
+      float x0 = cCentroX - cRExterior, y0 = cCentroY - cRExterior, d = 2 * cRExterior;
+      double paso = 360.0 / n;
+      Color fondo = Color.FromArgb(alfa, EstiloListas.Fondo(es)), borde = Color.FromArgb(Math.Max(alfa, 140), EstiloListas.Borde(es));
+      // Sombra suave alrededor (para que se distinga sobre cualquier fondo)
+      for (int i = 3; i >= 1; i--)
+        using (SolidBrush b = new SolidBrush(Color.FromArgb(18, 0, 0, 0))) g.FillEllipse(b, x0 - i * esc, y0 - i * esc + esc, d + 2 * i * esc, d + 2 * i * esc);
+      // Anillo y gajo elegido
+      using (SolidBrush b = new SolidBrush(fondo)) g.FillEllipse(b, x0, y0, d, d);
+      if (hover >= 0) using (SolidBrush b = new SolidBrush(es.Acento)) g.FillPie(b, x0, y0, d, d, (float)(-90 - paso / 2 + hover * paso), (float)paso);
+      using (Pen p = new Pen(borde)) g.DrawEllipse(p, x0, y0, d, d);
+      // Huecos transparentes: entre gajos y el centro (soltar ahi cancela; con la ventana fija, pinchar ahi la cierra)
+      g.CompositingMode = System.Drawing.Drawing2D.CompositingMode.SourceCopy;
+      if (n > 1)
+        using (Pen p = new Pen(Color.Transparent, 3 * esc))
+          for (int i = 0; i < n; i++) {
+            double a = (-90 - paso / 2 + i * paso) * Math.PI / 180;
+            float cs = (float)Math.Cos(a), sn = (float)Math.Sin(a);
+            g.DrawLine(p, cCentroX + cs * (cRCentro - 2 * esc), cCentroY + sn * (cRCentro - 2 * esc), cCentroX + cs * (cRExterior + 2 * esc), cCentroY + sn * (cRExterior + 2 * esc));
+          }
+      using (SolidBrush b = new SolidBrush(Color.Transparent))
+        g.FillEllipse(b, cCentroX - cRCentro, cCentroY - cRCentro, 2 * cRCentro, 2 * cRCentro);
+      g.CompositingMode = System.Drawing.Drawing2D.CompositingMode.SourceOver;
+      using (Pen p = new Pen(borde)) g.DrawEllipse(p, cCentroX - cRCentro, cCentroY - cRCentro, 2 * cRCentro, 2 * cRCentro);
+      // Contenido de cada gajo: icono, etiqueta y contenido centrados en el gajo
+      int icono = (int)(tamIcono * esc);
+      using (StringFormat sf = new StringFormat())
+      using (Font fInicial = new Font("Segoe UI", Math.Max(9f, icono * 0.47f), FontStyle.Bold, GraphicsUnit.Pixel)) {
+        sf.Alignment = StringAlignment.Center; sf.LineAlignment = StringAlignment.Near; sf.Trimming = StringTrimming.EllipsisWord;
+        for (int i = 0; i < n; i++) {
+          Opcion op = ops[i];
+          bool sel = i == hover;
+          Color cTexto = sel ? EstiloListas.TextoSel(es) : EstiloListas.Texto(es);
+          double a = (-90 + i * paso) * Math.PI / 180;
+          // Bloque de la opcion (su tamano) centrado a media altura del anillo; el texto con un poco de holgura de
+          // ancho para que no se parta distinto que al medirlo
+          float anchoTxt = cAnchos[i] + 4 * esc;
+          float cx = cCentroX + (float)Math.Cos(a) * cRadios[i], y = cCentroY + (float)Math.Sin(a) * cRadios[i] - cAltos[i] / 2;
+          if (conIconos) {
+            IconoOInicial(g, op, new Rectangle((int)(cx - icono / 2f), (int)y, icono, icono), sel, cTexto, fInicial);
+            y += icono + 4 * esc;
+          }
+          if (cLineasOp[i] > 0) {
+            float alto = cLineasOp[i] * fuente.Height;
+            using (SolidBrush b = new SolidBrush(cTexto))
+              g.DrawString(op.Nombre ?? "", fuente, b, new RectangleF(cx - anchoTxt / 2, y, anchoTxt, alto + 1), sf);
+            y += alto;
+          }
+          if (ConDetalle(op)) {
+            using (StringFormat sd = new StringFormat(StringFormatFlags.NoWrap))
+            using (SolidBrush b = new SolidBrush(sel ? EstiloListas.TextoSel(es) : EstiloListas.TextoSuave(es))) {
+              sd.Alignment = StringAlignment.Center; sd.Trimming = StringTrimming.EllipsisCharacter;
+              g.DrawString(op.Detalle, fuenteDet, b, new RectangleF(cx - anchoTxt / 2, y + 2 * esc, anchoTxt, fuenteDet.Height + 2), sd);
             }
           }
         }

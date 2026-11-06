@@ -145,11 +145,12 @@ function Leer-ConfigTexto {
 $botonesClic = @{ 0x50 = 'Clic izquierdo'; 0x51 = 'Clic derecho'; 0x52 = 'Clic central'; 0x53 = "Atr$([char]0xE1)s"; 0x56 = 'Adelante' }
 
 # Opciones de una lista: cada una es un atajo, un clic de un boton, un texto a pegar o un comando
-# Formato propio de una lista: { disposicion: lista|rejilla, columnas: 0 (automatico) o 2-6, icono: px en la rejilla,
-#   mostrar: { icono, etiqueta, contenido } }. Devuelve @(rejilla, columnas, icono, ver) con -1 en lo que no se indique
+# Formato propio de una lista: { disposicion: lista|rejilla|circular, columnas: 0 (automatico) o 2-6, icono: px en la rejilla,
+#   mostrar: { icono, etiqueta, contenido } }. Devuelve @(disposicion, columnas, icono, ver) con -1 en lo que no se indique
+#   (disposicion: 0 lista, 1 rejilla, 2 circular)
 #   (= como en la pestana Listas); ver = 1 icono + 2 etiqueta + 4 contenido.
 function Formato-Lista($v) {
-    $r = if ($v.disposicion -eq 'rejilla') { 1 } elseif ($v.disposicion -eq 'lista') { 0 } else { -1 }
+    $r = if ($v.disposicion -eq 'circular') { 2 } elseif ($v.disposicion -eq 'rejilla') { 1 } elseif ($v.disposicion -eq 'lista') { 0 } else { -1 }
     $c = -1; $i = -1; $n = 0
     if ($null -ne $v.columnas -and [int]::TryParse([string]$v.columnas, [ref]$n)) { $c = if ($n -le 0) { 0 } else { [Math]::Max(2, [Math]::Min(6, $n)) } }
     if ($null -ne $v.icono -and [int]::TryParse([string]$v.icono, [ref]$n) -and $n -gt 0) { $i = [Math]::Max(16, [Math]::Min(96, $n)) }
@@ -605,7 +606,8 @@ function Convertir-Config($cfg) {
     }
 }
 
-# Estetica de las listas: { tema, acento, opacidad, radio, detalle, iconos, letra, espaciado, difuminado, disposicion, columnas };
+# Estetica de las listas: { tema, acento, opacidad, radio, detalle, iconos, letra, espaciado, difuminado, disposicion (lista,
+#   rejilla o circular), columnas, r* de las rejillas, c* y tamIconoCircular de las rejillas circulares };
 # lo que falte, por defecto
 function Convertir-EstiloListas($l) {
     if ($null -eq $l) { return New-Object LogiRaton.Estilo }
@@ -614,7 +616,9 @@ function Convertir-EstiloListas($l) {
         $(if ($null -ne $l.detalle) { [bool]$l.detalle } else { $true }), $(if ($null -ne $l.iconos) { [bool]$l.iconos } else { $true }), $(if ($null -ne $l.etiqueta) { [bool]$l.etiqueta } else { $true }),
         [double](& $num $l.letra 10), [string]$l.espaciado, [string]$l.difuminado, [string]$l.disposicion, [int](& $num $l.columnas 0), [int](& $num $l.tamIcono 32),
         $(if ($null -ne $l.rIconos) { [bool]$l.rIconos } else { $true }), $(if ($null -ne $l.rEtiqueta) { [bool]$l.rEtiqueta } else { $true }),
-        $(if ($null -ne $l.rDetalle) { [bool]$l.rDetalle } else { $false }), [int](& $num $l.tamIconoLista 20))
+        $(if ($null -ne $l.rDetalle) { [bool]$l.rDetalle } else { $false }), [int](& $num $l.tamIconoLista 20),
+        $(if ($null -ne $l.cIconos) { [bool]$l.cIconos } else { $true }), $(if ($null -ne $l.cEtiqueta) { [bool]$l.cEtiqueta } else { $true }),
+        $(if ($null -ne $l.cDetalle) { [bool]$l.cDetalle } else { $false }), [int](& $num $l.tamIconoCircular 28))
 }
 
 # Modulo de OCR (ocr.cs): solo se compila y carga si la configuracion recorta la pantalla (OCR o imagen),
@@ -738,6 +742,59 @@ function Leer-Cuerpo($req) {
 }
 function Json($o) { return ($o | ConvertTo-Json -Depth 6 -Compress) }
 
+# ---- Programas para elegir la aplicacion de un perfil ----
+# Instalados: accesos directos del menu Inicio (de todos los usuarios y del usuario) que apuntan a un .exe, con el
+# nombre del acceso directo. Se guarda unos minutos porque recorrerlos tarda alrededor de un segundo.
+# Abiertos: procesos con ventana en este momento (asi salen tambien las aplicaciones de la Tienda, como Teams).
+# Se descartan los lanzadores genericos (su acceso directo no es el programa: cmd, powershell, mmc...) y los
+# procesos internos de Windows. Sin permisos de administrador.
+$script:programasCache = $null
+$script:programasFecha = [datetime]::MinValue
+$lanzadores = @('cmd.exe', 'powershell.exe', 'pwsh.exe', 'mmc.exe', 'msiexec.exe', 'hh.exe', 'control.exe', 'rundll32.exe',
+    'wscript.exe', 'cscript.exe', 'javaw.exe', 'launch.exe', 'setup.exe', 'install.exe', 'uninstall.exe', 'explorer.exe')
+$internosWindows = @('applicationframehost.exe', 'textinputhost.exe', 'shellexperiencehost.exe', 'searchhost.exe',
+    'startmenuexperiencehost.exe', 'lockapp.exe', 'rtkuwp.exe', 'systemsettings.exe')
+function Programa-Valido([string]$exe) { return $exe -match '^[\w.\- ]+\.exe$' }
+function Listar-Instalados {
+    if ($script:programasCache -and ((Get-Date) - $script:programasFecha).TotalMinutes -lt 10) { return $script:programasCache }
+    $porExe = @{}
+    $shell = New-Object -ComObject WScript.Shell
+    try {
+        foreach ($carpeta in @([Environment]::GetFolderPath('CommonStartMenu'), [Environment]::GetFolderPath('StartMenu'))) {
+            if (-not $carpeta -or -not (Test-Path -LiteralPath $carpeta)) { continue }
+            foreach ($lnk in Get-ChildItem -LiteralPath $carpeta -Recurse -Filter '*.lnk' -File -ErrorAction SilentlyContinue) {
+                $destino = $null
+                try { $destino = $shell.CreateShortcut($lnk.FullName).TargetPath } catch { continue }
+                if (-not $destino -or -not $destino.EndsWith('.exe', [StringComparison]::OrdinalIgnoreCase)) { continue }
+                $exe = [IO.Path]::GetFileName($destino).ToLowerInvariant()
+                if (-not (Programa-Valido $exe) -or $lanzadores -contains $exe -or $exe -match '^unins') { continue }
+                if ($lnk.Name -match 'desinstal|uninstall') { continue }
+                if (-not $porExe.ContainsKey($exe)) { $porExe[$exe] = [IO.Path]::GetFileNameWithoutExtension($lnk.Name) }
+            }
+        }
+    } finally { [void][Runtime.InteropServices.Marshal]::ReleaseComObject($shell) }
+    $script:programasCache = $porExe
+    $script:programasFecha = Get-Date
+    return $porExe
+}
+function Listar-Programas {
+    $instalados = Listar-Instalados
+    $abiertos = @{}
+    foreach ($p in Get-Process -ErrorAction SilentlyContinue | Where-Object { $_.MainWindowHandle -ne 0 }) {
+        $exe = ($p.ProcessName + '.exe').ToLowerInvariant()
+        if (-not (Programa-Valido $exe) -or $internosWindows -contains $exe -or $abiertos.ContainsKey($exe)) { continue }
+        $desc = $null
+        try { $desc = $p.Description } catch { }
+        $abiertos[$exe] = if ($desc) { $desc } else { $p.ProcessName }
+    }
+    $todos = @{}
+    foreach ($k in $instalados.Keys) { $todos[$k] = $instalados[$k] }
+    foreach ($k in $abiertos.Keys) { if (-not $todos.ContainsKey($k)) { $todos[$k] = $abiertos[$k] } }
+    return @($todos.Keys | Sort-Object { $todos[$_] } | ForEach-Object {
+        [ordered]@{ exe = $_; nombre = $todos[$_]; abierto = $abiertos.ContainsKey($_) }
+    })
+}
+
 function Atender($ctx) {
     $req = $ctx.Request
     $ruta = $req.Url.AbsolutePath
@@ -801,6 +858,9 @@ function Atender($ctx) {
             Cargar-OcrSiHaceFalta $txt
             Log 'Configuracion guardada y aplicada'
             Responder $ctx 200 (Json @{ ok = $true })
+        }
+        'GET /api/programas' {
+            Responder $ctx 200 (Json @{ programas = @(Listar-Programas) })
         }
         'GET /api/copias' {
             Responder $ctx 200 (Json @{ copias = @(Listar-Copias) })
