@@ -3458,6 +3458,8 @@ function pintarMuestraCircular(caja, l) {
   medirTodo(mejorTope);
   const rExt = radioMinimo(); cabe(rExt);
   const rCentro = K * rExt;
+  // Corte entre gajos en proporción al círculo (como raton.cs, GrosorCorteCircular): 2,5 % del radio, entre 1,5 y 3 px
+  const corte = Math.max(1.5, Math.min(3, rExt * 0.025));
   const lado = Math.ceil(2 * (rExt + 5)), m = lado / 2;
   const punto = (ang, rad) => [m + Math.cos(ang * Math.PI / 180) * rad, m + Math.sin(ang * Math.PI / 180) * rad];
   const ini = -90 - paso / 2 + sel * paso;
@@ -3472,7 +3474,7 @@ function pintarMuestraCircular(caja, l) {
   caja.innerHTML =
     `<svg width="${lado}" height="${lado}" viewBox="0 0 ${lado} ${lado}" aria-hidden="true">` +
     `<defs><mask id="${idMascara}" maskUnits="userSpaceOnUse"><rect width="${lado}" height="${lado}" fill="#fff"/>` +
-    `<g stroke="#000" stroke-width="3" fill="none">${cortes}</g>` +
+    `<g stroke="#000" stroke-width="${corte}" fill="none">${cortes}</g>` +
     `<circle cx="${m}" cy="${m}" r="${rCentro}" fill="#000"/></mask></defs>` +
     `<g mask="url(#${idMascara})"><circle cx="${m}" cy="${m}" r="${rExt}" fill="${fondo}" stroke="${borde}"/>` +
     `<path d="M${m} ${m} L${ax} ${ay} A${rExt} ${rExt} 0 0 1 ${bx} ${by} Z" fill="${l.acento}"/></g>` +

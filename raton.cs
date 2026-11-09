@@ -3715,6 +3715,9 @@ namespace LogiRaton {
     [DllImport("user32.dll")] static extern short GetAsyncKeyState(int vk);
     static bool BotonRatonPulsado() { return (GetAsyncKeyState(0x01) & 0x8000) != 0 || (GetAsyncKeyState(0x02) & 0x8000) != 0; }
 
+    // Grosor del corte transparente entre gajos (px reales): 2,5 % del radio exterior, entre 1,5 y 3 px a 96 ppp
+    float GrosorCorteCircular() { return Math.Max(1.5f * esc, Math.Min(3f * esc, cRExterior * 0.025f)); }
+
     void DibujarCircular(Graphics g) {
       int n = ops.Count, alfa = 255 * es.Opacidad / 100;
       float x0 = cCentroX - cRExterior, y0 = cCentroY - cRExterior, d = 2 * cRExterior;
@@ -3729,8 +3732,11 @@ namespace LogiRaton {
       using (Pen p = new Pen(borde)) g.DrawEllipse(p, x0, y0, d, d);
       // Huecos transparentes: entre gajos y el centro (soltar ahi cancela; con la ventana fija, pinchar ahi la cierra)
       g.CompositingMode = System.Drawing.Drawing2D.CompositingMode.SourceCopy;
+      // El corte entre gajos va en proporcion al circulo: fino en los pequenos (iconos pequenos, espaciado compacto) y
+      // como mucho 3 px (a 96 ppp) en los grandes, como la rueda de gestos. Con un grosor fijo, en un circulo pequeno
+      // los cortes se comian buena parte de cada gajo.
       if (n > 1)
-        using (Pen p = new Pen(Color.Transparent, 3 * esc))
+        using (Pen p = new Pen(Color.Transparent, GrosorCorteCircular()))
           for (int i = 0; i < n; i++) {
             double a = (-90 - paso / 2 + i * paso) * Math.PI / 180;
             float cs = (float)Math.Cos(a), sn = (float)Math.Sin(a);
